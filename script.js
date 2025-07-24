@@ -84,8 +84,8 @@ function updatePortfolio(rangeKey) {
   }
   const total = data[data.length - 1];
   const prev = data[0];
-  const gain = total - prev;
-  const percent = (gain / prev) * 100;
+  const gain = total - prev; 
+  const percent = (gain / prev) * 100; 
 
   document.getElementById('portfolioValue').textContent = `Total: ${formatMoney(total)}`;
   const gainElem = document.getElementById('portfolioGain');
@@ -150,6 +150,35 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
     updatePortfolio(this.dataset.range);
   });
 });
+
+function getLabels(days) {
+  const today = new Date();
+  let labels = [];
+  if (days === 7) {
+    for (let i = days - 1; i >= 0; i--) {
+      let d = new Date(today);
+      d.setDate(today.getDate() - i);
+      labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+  } else if (days === 30) {
+    let sampleCount = 8;
+    for (let i = 0; i < sampleCount; i++) {
+      let idx = Math.round(i * (days - 1) / (sampleCount - 1));
+      let d = new Date(today);
+      d.setDate(today.getDate() - (days - 1 - idx));
+      labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+    }
+  } else if (days === 180) {
+    let sampleCount = 6;
+    for (let i = 0; i < sampleCount; i++) {
+      let d = new Date(today);
+      d.setMonth(today.getMonth() - (sampleCount - 1 - i));
+      d.setDate(today.getDate());
+      labels.push(d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
+    }
+  }
+  return labels;
+}
 
 // Initial load
 updatePortfolio('7d');
