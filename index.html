@@ -16,6 +16,7 @@
     }
 
     .dashboard-container {
+      max-width: 1200px;
       max-width: 900px;
       margin: 40px auto;
       background: #fff;
@@ -146,11 +147,29 @@
       <div class="dashboard-nav">
         <button class="nav-btn nav-performance active">Performance</button>
         <button class="nav-btn nav-allocation">Allocation</button>
-        <button class="nav-btn nav-update">Update</button>
+    
       </div>
-      <div class="dashboard-content">
+      <div class="dashboard-content" id="dashboardContent">
+        <div id="allocationSection" style="display:none; width:100%;">
+          <div style="display:flex; align-items:center; gap:32px; width:100%;">
+            <div style="flex:0 0 340px; display:flex; align-items:center; justify-content:center;">
+              <canvas id="allocationChart" style="max-width:320px;"></canvas>
+            </div>
+            <form id="allocationForm" style="flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:18px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <label><input type="radio" name="assetType" value="Cash" checked> Cash</label>
+                <label><input type="radio" name="assetType" value="Stock"> Stock</label>
+                <label><input type="radio" name="assetType" value="Bond"> Bond</label>
+                <label><input type="radio" name="assetType" value="Other"> Other</label>
+              </div>
+              <div style="margin-top:8px; width:100%;">
+                <input type="number" id="assetChange" placeholder="Enter change (e.g. -200 or 300)" style="width:180px; padding:6px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc;">
+              </div>
+              <button type="submit" id="updateAssetBtn" style="margin-top:10px; background:#db0011; color:#fff; border:none; border-radius:8px; padding:10px 32px; font-size:1.08rem; font-weight:700; cursor:pointer;">Update</button>
+            </form>
+          </div>
+        </div>
         <canvas id="portfolioChart"></canvas>
-        <canvas id="allocationChart" style="display:none;max-width:400px;"></canvas>
       </div>
     </main>
   </div>

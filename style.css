@@ -37,6 +37,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  min-height: 320px;
+}
+#portfolioChart {
+  width: 100% !important;
+  max-width: 600px;
+  height: 320px !important;
+}
+#allocationChart {
+  width: 320px !important;
+  height: 320px !important;
+  max-width: 100%;
+  display: block;
+  margin: 0 auto;
 }
 /* Removed stray color and unmatched brace */
 .header-right {
@@ -89,6 +102,19 @@
   width: 100% !important;
   max-width: 600px;
   height: 320px !important;
+}
+.chartjs-render-monitor + .chartjs-legend {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 18px;
+}
+.chartjs-legend li {
+  min-width: 90px;
+  text-align: left;
+  margin: 0 8px !important;
 }
 @media (max-width: 800px) {
   .dashboard-container {

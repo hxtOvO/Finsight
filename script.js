@@ -143,6 +143,102 @@ function updateChart(labels, data) {
   }
 }
 
+// Pie chart asset allocation data (randomized for demo)
+function getRandomAllocation() {
+  let total = 10000 + Math.floor(Math.random() * 5000);
+  let cash = Math.floor(Math.random() * total * 0.4);
+  let stock = Math.floor(Math.random() * (total - cash) * 0.6);
+  let bond = Math.floor(Math.random() * (total - cash - stock) * 0.7);
+  let other = total - cash - stock - bond;
+  return {
+    labels: ['Cash', 'Stock', 'Bond', 'Other'],
+    values: [cash, stock, bond, other],
+    colors: ['#db0011', '#222', '#e5e7eb', '#f3f4f6']
+  };
+}
+
+let allocationChart;
+let allocationDataCache = null;
+
+function showAllocationSection() {
+  document.getElementById('portfolioChart').style.display = 'none';
+  document.getElementById('allocationSection').style.display = 'block';
+  document.querySelector('.range-toggle').style.visibility = 'hidden';
+  document.getElementById('portfolioGain').style.visibility = 'hidden';
+  // Only generate allocation data once per page load
+  if (!allocationDataCache) {
+    allocationDataCache = getRandomAllocation();
+  }
+  const allocationData = allocationDataCache;
+  if (!allocationChart) {
+    const ctx = document.getElementById('allocationChart').getContext('2d');
+    allocationChart = new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: allocationData.labels,
+        datasets: [{
+          data: allocationData.values,
+          backgroundColor: allocationData.colors,
+          borderColor: '#fff',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+            labels: {
+              font: { family: 'Montserrat, Roboto, Arial, sans-serif', size: 16, weight: '600' },
+              color: '#222'
+            }
+          }
+        }
+      }
+    });
+  } else {
+    allocationChart.data.datasets[0].data = allocationData.values;
+    allocationChart.update();
+  }
+}
+
+function showPerformanceSection() {
+  document.getElementById('portfolioChart').style.display = 'block';
+  document.getElementById('allocationSection').style.display = 'none';
+  document.querySelector('.range-toggle').style.visibility = 'visible';
+  document.getElementById('portfolioGain').style.visibility = 'visible';
+}
+
+// Handle allocation update
+if (!window.allocationFormHandlerAdded) {
+  window.allocationFormHandlerAdded = true;
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('allocationForm');
+    if (form) {
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const type = form.assetType.value;
+        const change = parseFloat(document.getElementById('assetChange').value);
+        if (isNaN(change) || change === 0) return;
+        // Update allocation cache
+        const idx = allocationDataCache.labels.indexOf(type);
+        allocationDataCache.values[idx] += change;
+        // Update total
+        const newTotal = allocationDataCache.values.reduce((a,b)=>a+b,0);
+        document.getElementById('portfolioValue').textContent = `Total: ${formatMoney(newTotal)}`;
+        // Update pie chart
+        allocationChart.data.datasets[0].data = allocationDataCache.values;
+        allocationChart.update();
+        // Update performance last data point
+        fullHistory[fullHistory.length-1] = newTotal;
+        updatePortfolio(document.querySelector('.toggle-btn.active').dataset.range);
+        document.getElementById('assetChange').value = '';
+      });
+    }
+  });
+}
+
+// Navigation logic
 document.querySelectorAll('.toggle-btn').forEach(btn => {
   btn.addEventListener('click', function() {
     document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
@@ -151,34 +247,18 @@ document.querySelectorAll('.toggle-btn').forEach(btn => {
   });
 });
 
-function getLabels(days) {
-  const today = new Date();
-  let labels = [];
-  if (days === 7) {
-    for (let i = days - 1; i >= 0; i--) {
-      let d = new Date(today);
-      d.setDate(today.getDate() - i);
-      labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+document.querySelectorAll('.nav-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    if (this.classList.contains('nav-performance')) {
+      showPerformanceSection();
+    } else if (this.classList.contains('nav-allocation')) {
+      showAllocationSection();
     }
-  } else if (days === 30) {
-    let sampleCount = 8;
-    for (let i = 0; i < sampleCount; i++) {
-      let idx = Math.round(i * (days - 1) / (sampleCount - 1));
-      let d = new Date(today);
-      d.setDate(today.getDate() - (days - 1 - idx));
-      labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-    }
-  } else if (days === 180) {
-    let sampleCount = 6;
-    for (let i = 0; i < sampleCount; i++) {
-      let d = new Date(today);
-      d.setMonth(today.getMonth() - (sampleCount - 1 - i));
-      d.setDate(today.getDate());
-      labels.push(d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
-    }
-  }
-  return labels;
-}
+  });
+});
 
 // Initial load
+showPerformanceSection();
 updatePortfolio('7d');
