@@ -58,6 +58,41 @@
   align-items: flex-end;
   gap: 8px;
 }
+
+.privacy-toggle {
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+
+.privacy-toggle:hover {
+  background: #e5e7eb;
+  transform: scale(1.05);
+}
+
+.privacy-toggle.active {
+  background: #db0011;
+  color: white;
+}
+
+.privacy-icon {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.privacy-toggle.active .privacy-icon {
+  transform: rotate(180deg);
+}
+
 .portfolio-value {
   font-size: 1.1rem;
   font-weight: 500;

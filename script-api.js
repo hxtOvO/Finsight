@@ -16,6 +16,28 @@ let allocationChart;
 let currentRange = '7d';
 let allocationDataCache = null;
 let performanceDataCache = {}; // 缓存性能数据
+let isPrivacyMode = true; // 默认开启隐私模式
+
+// Privacy mode functions
+function togglePrivacyMode() {
+  isPrivacyMode = !isPrivacyMode;
+  const privacyToggle = document.getElementById('privacyToggle');
+  
+  if (isPrivacyMode) {
+    // 隐私模式：隐藏敏感信息
+    privacyToggle.classList.remove('active');
+    privacyToggle.innerHTML = '<span class="privacy-icon">👁️‍🗨️</span>';
+    privacyToggle.title = 'Show Financial Data';
+  } else {
+    // 显示模式：显示所有信息
+    privacyToggle.classList.add('active');
+    privacyToggle.innerHTML = '<span class="privacy-icon">👁️</span>';
+    privacyToggle.title = 'Hide Financial Data';
+  }
+  
+  // 重新更新头部信息以应用隐私设置
+  updatePortfolioHeader(window.currentRange || '7d');
+}
 
 // 清除缓存函数
 function clearPerformanceCache() {
@@ -271,24 +293,37 @@ async function updatePortfolioHeader(range = '7d') {
   const portfolioData = await fetchPortfolioData();
   const performanceData = await fetchPerformanceData(range);
   
-  document.getElementById('portfolioValue').textContent = `Total: ${formatMoney(portfolioData.total_value)}`;
+  const portfolioValueElement = document.getElementById('portfolioValue');
+  const portfolioGainElement = document.getElementById('portfolioGain');
   
-  // 计算基于时间范围的涨跌幅
-  let gainLoss = 0;
-  let gainLossPercent = 0;
-  
-  if (performanceData && performanceData.length >= 2) {
-    const currentValue = performanceData[performanceData.length - 1].value; // 最新值
-    const startValue = performanceData[0].value; // 开始值
+  // 根据隐私模式决定显示内容
+  if (isPrivacyMode) {
+    portfolioValueElement.setAttribute('data-original', `Total: ${formatMoney(portfolioData.total_value)}`);
+    portfolioValueElement.textContent = 'Total: ****';
+    // 使用占位符保持布局，不使用display: none
+    portfolioGainElement.textContent = '+ $**** (+*.**%)';
+    portfolioGainElement.style.visibility = 'hidden';
+    portfolioGainElement.style.height = 'auto'; // 保持高度
+  } else {
+    portfolioValueElement.textContent = `Total: ${formatMoney(portfolioData.total_value)}`;
+    portfolioGainElement.style.visibility = 'visible';
     
-    gainLoss = currentValue - startValue;
-    gainLossPercent = ((gainLoss / startValue) * 100);
+    // 计算基于时间范围的涨跌幅
+    let gainLoss = 0;
+    let gainLossPercent = 0;
+    
+    if (performanceData && performanceData.length >= 2) {
+      const currentValue = performanceData[performanceData.length - 1].value; // 最新值
+      const startValue = performanceData[0].value; // 开始值
+      
+      gainLoss = currentValue - startValue;
+      gainLossPercent = ((gainLoss / startValue) * 100);
+    }
+    
+    const isPositive = gainLoss >= 0;
+    portfolioGainElement.textContent = `${isPositive ? '+' : '-'} ${formatMoney(Math.abs(gainLoss))} (${isPositive ? '+' : '-'}${Math.abs(gainLossPercent).toFixed(2)}%)`;
+    portfolioGainElement.className = `portfolio-gain ${isPositive ? 'positive' : 'negative'}`;
   }
-  
-  const gainElement = document.getElementById('portfolioGain');
-  const isPositive = gainLoss >= 0;
-  gainElement.textContent = `${isPositive ? '+' : '-'} ${formatMoney(Math.abs(gainLoss))} (${isPositive ? '+' : '-'}${Math.abs(gainLossPercent).toFixed(2)}%)`;
-  gainElement.className = `portfolio-gain ${isPositive ? 'positive' : 'negative'}`;
 }
 
 async function createAllocationChart() {
@@ -465,6 +500,15 @@ async function showAllocationSection() {
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', async function() {
+  // 初始化隐私模式为开启状态
+  isPrivacyMode = true;
+  
+  // 添加隐私切换按钮事件监听器
+  const privacyToggle = document.getElementById('privacyToggle');
+  if (privacyToggle) {
+    privacyToggle.addEventListener('click', togglePrivacyMode);
+  }
+  
   // 清除缓存确保获取新数据
   clearPerformanceCache();
   

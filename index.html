@@ -67,6 +67,7 @@
       font-size: 1rem;
       font-weight: 500;
       margin-bottom: 2px;
+      min-height: 1.5rem; /* 保证最小高度 */
     }
 
     .portfolio-gain.positive {
@@ -134,8 +135,11 @@
         <span class="app-name">FinSight</span>
       </div>
       <div class="header-right">
-        <div class="portfolio-value" id="portfolioValue">Total: $12,540.00</div>
-        <div class="portfolio-gain" id="portfolioGain">+ $230.00 (+1.87%)</div>
+        <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode">
+          <span class="privacy-icon">👁️‍🗨️</span>
+        </button>
+        <div class="portfolio-value" id="portfolioValue">Total: ****</div>
+        <div class="portfolio-gain" id="portfolioGain">+ $**** (+*.**%)</div>
         <div class="range-toggle">
           <button class="toggle-btn active" data-range="7d">7 Days</button>
           <button class="toggle-btn" data-range="1m">1 Month</button>
