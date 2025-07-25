@@ -298,28 +298,23 @@ async function updatePortfolioHeader(range = '7d') {
   
   // 根据隐私模式决定显示内容
   if (isPrivacyMode) {
-    portfolioValueElement.setAttribute('data-original', `Total: ${formatMoney(portfolioData.total_value)}`);
-    portfolioValueElement.textContent = 'Total: ****';
-    // 使用占位符保持布局，不使用display: none
+    portfolioValueElement.style.visibility = 'hidden';
     portfolioGainElement.textContent = '+ $**** (+*.**%)';
     portfolioGainElement.style.visibility = 'hidden';
-    portfolioGainElement.style.height = 'auto'; // 保持高度
+    portfolioGainElement.style.height = 'auto';
   } else {
+    portfolioValueElement.style.visibility = 'visible';
     portfolioValueElement.textContent = `Total: ${formatMoney(portfolioData.total_value)}`;
     portfolioGainElement.style.visibility = 'visible';
-    
     // 计算基于时间范围的涨跌幅
     let gainLoss = 0;
     let gainLossPercent = 0;
-    
     if (performanceData && performanceData.length >= 2) {
-      const currentValue = performanceData[performanceData.length - 1].value; // 最新值
-      const startValue = performanceData[0].value; // 开始值
-      
+      const currentValue = performanceData[performanceData.length - 1].value;
+      const startValue = performanceData[0].value;
       gainLoss = currentValue - startValue;
       gainLossPercent = ((gainLoss / startValue) * 100);
     }
-    
     const isPositive = gainLoss >= 0;
     portfolioGainElement.textContent = `${isPositive ? '+' : '-'} ${formatMoney(Math.abs(gainLoss))} (${isPositive ? '+' : '-'}${Math.abs(gainLossPercent).toFixed(2)}%)`;
     portfolioGainElement.className = `portfolio-gain ${isPositive ? 'positive' : 'negative'}`;
@@ -336,7 +331,7 @@ async function createAllocationChart() {
     }
     
     const labels = assetData.map(item => item.asset_type);
-    const values = assetData.map(item => item.value);
+    const values = assetData.map(item => Number(item.value));
     const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
     
     allocationChart = new Chart(ctx, {
@@ -371,7 +366,7 @@ async function createAllocationChart() {
               label: function(context) {
                 const label = context.label || '';
                 const value = context.parsed;
-                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const total = context.dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
                 const percentage = Math.round((value / total) * 100);
                 return `${label}: ${formatMoney(value)} (${percentage}%)`;
               }
@@ -409,7 +404,7 @@ async function createAllocationChart() {
               const percentage = Math.round((value / total) * 100);
               
               // 在饼图扇形上显示百分比（如果扇形足够大）
-              if (percentage >= 25) { // 只有大于等于25%才显示
+              if (percentage >= 5) { // 只有大于等于30%才显示
                 const percentageRadius = radius * 0.7; // 百分比显示在扇形的70%位置
                 const percentageX = centerX + Math.cos(angle) * percentageRadius;
                 const percentageY = centerY + Math.sin(angle) * percentageRadius;
@@ -476,6 +471,7 @@ function showPerformanceSection() {
   console.log('📊 强制重置到7天视图，确保状态一致');
   
   updateChart(currentRange);
+  updatePortfolioHeader(currentRange);
 }
 
 async function showAllocationSection() {
