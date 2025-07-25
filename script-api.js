@@ -216,10 +216,11 @@ async function updateChart(range = '7d') {
           data: values,
           borderColor: '#db0011',
           backgroundColor: gradient,
-          pointRadius: 5,
+          pointRadius: 0,
+          pointHoverRadius: 6,
           pointBackgroundColor: '#fff',
           pointBorderColor: '#db0011',
-          borderWidth: 3,
+          borderWidth: 2,
           fill: true,
           tension: 0.38
         }]
@@ -430,6 +431,15 @@ function showPerformanceSection() {
   document.querySelector('.nav-performance').classList.add('active');
   document.querySelector('.nav-allocation').classList.remove('active');
   
+  // 强制重置到7天，确保状态一致
+  currentRange = '7d';
+  
+  // 重置所有按钮状态
+  document.querySelectorAll('.toggle-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector('[data-range="7d"]').classList.add('active');
+  
+  console.log('📊 强制重置到7天视图，确保状态一致');
+  
   updateChart(currentRange);
 }
 
@@ -496,6 +506,10 @@ document.addEventListener('DOMContentLoaded', async function() {
       
       // Update cached allocation data
       allocationDataCache = await fetchAssetData();
+      
+      // Clear performance data cache to force refresh
+      performanceDataCache = {};
+      console.log('🗑️ 清除performance缓存，强制重新获取数据');
       
       // Update portfolio header
       await updatePortfolioHeader();

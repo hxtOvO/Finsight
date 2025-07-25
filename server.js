@@ -258,35 +258,20 @@ app.get('/api/performance/:range', async (req, res) => {
       return res.json([]);
     }
     
-    let sampledData = [];
+    let resultData = [];
     
     if (range === '7d') {
       // 7天：返回最近7天的数据
-      sampledData = allRows.slice(-7);
+      resultData = allRows.slice(-7);
     } else if (range === '1m') {
-      // 1个月：从最近30天中抽样8个点
-      const last30Days = allRows.slice(-30);
-      const step = Math.floor(last30Days.length / 8);
-      for (let i = 0; i < last30Days.length; i += step) {
-        sampledData.push(last30Days[i]);
-      }
-      // 确保包含最后一天
-      if (sampledData[sampledData.length - 1].date !== last30Days[last30Days.length - 1].date) {
-        sampledData.push(last30Days[last30Days.length - 1]);
-      }
+      // 1个月：返回最近30天的完整数据
+      resultData = allRows.slice(-30);
     } else if (range === '6m') {
-      // 6个月：从180天中抽样12个点
-      const step = Math.floor(allRows.length / 12);
-      for (let i = 0; i < allRows.length; i += step) {
-        sampledData.push(allRows[i]);
-      }
-      // 确保包含最后一天
-      if (sampledData[sampledData.length - 1].date !== allRows[allRows.length - 1].date) {
-        sampledData.push(allRows[allRows.length - 1]);
-      }
+      // 6个月：返回完整180天数据
+      resultData = allRows;
     }
     
-    res.json(sampledData);
+    res.json(resultData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
