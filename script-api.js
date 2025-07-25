@@ -198,7 +198,7 @@ async function generateFallbackPerformanceData(range) {
 
 function getLabelsFromData(data, range) {
   if (range === '6m') {
-    // 6个月显示年月格式
+    // 6个月区间：每个数据点都显示月年
     return data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
   } else {
     // 7天和1个月都显示月日格式
