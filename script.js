@@ -99,11 +99,6 @@ let chart;
 function updateChart(labels, data) {
   if (!chart) {
     const ctx = document.getElementById('portfolioChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-    gradient.addColorStop(0, 'rgba(219,0,17,0.32)'); // Top: HSBC red, semi-transparent
-    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
-    gradient.addColorStop(1, 'rgba(219,0,17,0.01)'); // Bottom: almost transparent
-
     chart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -111,47 +106,34 @@ function updateChart(labels, data) {
         datasets: [{
           label: 'Portfolio Value',
           data: data,
-          borderColor: '#db0011',
-          backgroundColor: gradient,
-          pointRadius: 5,
-          pointBackgroundColor: '#fff',
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37,99,235,0.08)',
+          pointRadius: 3,
+          pointBackgroundColor: '#2563eb',
           fill: true,
-          tension: 0.38
+          tension: 0.35
         }]
       },
       options: {
         responsive: true,
         animation: {
-          duration: 1600,
-          easing: 'easeOutQuart',
-          animateScale: true,
-          animateRotate: true,
+          duration: 900,
+          easing: 'easeOutQuart'
         },
         plugins: {
           legend: { display: false },
-          tooltip: {
-            mode: 'index',
-            intersect: false,
-            backgroundColor: '#fff',
-            titleColor: '#db0011',
-            bodyColor: '#222',
-            borderColor: '#db0011',
-            borderWidth: 1,
-            padding: 12,
-            titleFont: { weight: 'bold', size: 16 },
-            bodyFont: { size: 15 },
-          },
+          tooltip: { mode: 'index', intersect: false }
         },
         scales: {
           x: {
             grid: { display: false },
-            ticks: { color: '#222', font: { size: 14 } },
+            ticks: { font: { size: 18, family: 'Montserrat, Roboto, Arial, sans-serif' }, color: '#222' }
           },
           y: {
-            grid: { color: '#f3f4f6' },
-            ticks: { color: '#222', font: { size: 14 } },
-          },
-        },
+            grid: { color: '#e5e7eb' }, beginAtZero: false,
+            ticks: { font: { size: 18, family: 'Montserrat, Roboto, Arial, sans-serif' }, color: '#222' }
+          }
+        }
       }
     });
   } else {

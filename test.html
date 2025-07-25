@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FinSight Backend Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>🚀 FinSight Backend Connection Test</h1>
+    <div id="results"></div>
+    
+    <script>
+        async function runTests() {
+            const results = document.getElementById('results');
+            
+            // Test 1: Health Check
+            try {
+                const response = await fetch('http://localhost:3000/api/health');
+                const data = await response.json();
+                results.innerHTML += `<div class="test-result success">✅ Health Check: ${data.message}</div>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Health Check Failed: ${error.message}</div>`;
+                return;
+            }
+            
+            // Test 2: Portfolio Data
+            try {
+                const response = await fetch('http://localhost:3000/api/portfolio');
+                const data = await response.json();
+                results.innerHTML += `<div class="test-result success">✅ Portfolio Data Retrieved</div>`;
+                results.innerHTML += `<pre>Portfolio: ${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Portfolio Data Failed: ${error.message}</div>`;
+            }
+            
+            // Test 3: Asset Data
+            try {
+                const response = await fetch('http://localhost:3000/api/assets');
+                const data = await response.json();
+                results.innerHTML += `<div class="test-result success">✅ Asset Data Retrieved</div>`;
+                results.innerHTML += `<pre>Assets: ${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Asset Data Failed: ${error.message}</div>`;
+            }
+            
+            // Test 4: Performance Data
+            try {
+                const response = await fetch('http://localhost:3000/api/performance/7d');
+                const data = await response.json();
+                results.innerHTML += `<div class="test-result success">✅ Performance Data Retrieved (7 days)</div>`;
+                results.innerHTML += `<pre>Performance (7d): ${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                results.innerHTML += `<div class="test-result error">❌ Performance Data Failed: ${error.message}</div>`;
+            }
+            
+            results.innerHTML += `<div class="test-result success">🎉 All tests completed! You can now use the main application at <a href="http://localhost:3000">http://localhost:3000</a></div>`;
+        }
+        
+        runTests();
+    </script>
+</body>
+</html>

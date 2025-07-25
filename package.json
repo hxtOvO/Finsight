@@ -1,0 +1,27 @@
+{
+  "name": "finsight-backend",
+  "version": "1.0.0",
+  "description": "FinSight Portfolio Manager Backend",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "start-sqlite": "node server-sqlite.js",
+    "dev-sqlite": "nodemon server-sqlite.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mysql2": "^3.6.5",
+    "sqlite3": "^5.1.6",
+    "sqlite": "^5.1.1",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "body-parser": "^1.20.2"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["portfolio", "finance", "mysql", "express"],
+  "author": "FinSight",
+  "license": "MIT"
+}
