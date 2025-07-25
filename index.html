@@ -48,6 +48,34 @@
       font-weight: 700;
       letter-spacing: 1.2px;
       color: #db0011;
+      position: relative;
+      display: inline-block;
+    }
+
+    .logo-fin {
+      position: relative;
+      z-index: 2;
+      color: #db0011;
+    }
+
+    .logo-in-overlap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.8em;
+      z-index: 1;
+    }
+
+    .logo-sight {
+      position: relative;
+      z-index: 2;
+      color: #db0011;
     }
 
     .header-right {
@@ -132,7 +160,7 @@
   <div class="dashboard-container">
     <header class="dashboard-header">
       <div class="header-left">
-        <span class="app-name">FinSight</span>
+        <span class="app-name">FINSIGHT</span>
       </div>
       <div class="header-right">
         <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode">
