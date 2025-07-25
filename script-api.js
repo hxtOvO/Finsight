@@ -298,13 +298,18 @@ async function updatePortfolioHeader(range = '7d') {
   
   // 根据隐私模式决定显示内容
   if (isPrivacyMode) {
-    portfolioValueElement.style.visibility = 'hidden';
+    portfolioValueElement.style.visibility = 'visible';
+    portfolioValueElement.textContent = 'Total: ****';
+    portfolioValueElement.style.color = '#fff';
     portfolioGainElement.textContent = '+ $**** (+*.**%)';
-    portfolioGainElement.style.visibility = 'hidden';
+    portfolioGainElement.style.visibility = 'visible';
+    portfolioGainElement.style.color = '#fff';
     portfolioGainElement.style.height = 'auto';
+    portfolioGainElement.className = 'portfolio-gain';
   } else {
     portfolioValueElement.style.visibility = 'visible';
     portfolioValueElement.textContent = `Total: ${formatMoney(portfolioData.total_value)}`;
+    portfolioValueElement.style.color = '';
     portfolioGainElement.style.visibility = 'visible';
     // 计算基于时间范围的涨跌幅
     let gainLoss = 0;
@@ -318,6 +323,7 @@ async function updatePortfolioHeader(range = '7d') {
     const isPositive = gainLoss >= 0;
     portfolioGainElement.textContent = `${isPositive ? '+' : '-'} ${formatMoney(Math.abs(gainLoss))} (${isPositive ? '+' : '-'}${Math.abs(gainLossPercent).toFixed(2)}%)`;
     portfolioGainElement.className = `portfolio-gain ${isPositive ? 'positive' : 'negative'}`;
+    portfolioGainElement.style.color = '';
   }
 }
 
