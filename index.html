@@ -1,4 +1,223 @@
 <!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>FinSight Featured Stocks</title>
+  <style>
+    body { font-family: Arial, sans-serif; }
+    .featured-stocks-panel {
+      position: fixed;
+      right: 40px;
+      top: 260px;
+      width: 420px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      padding: 20px 18px 18px 18px;
+      z-index: 100;
+    }
+    .featured-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .featured-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 0;
+      background: #fafbfc;
+      scrollbar-width: thin;
+      scrollbar-color: #bbb #fafbfc;
+    }
+    /* 针对 Webkit 浏览器的滚动条美化 */
+    .featured-list::-webkit-scrollbar {
+      width: 8px;
+      background: #fafbfc;
+    }
+    .featured-list::-webkit-scrollbar-thumb {
+      background: #bbb;
+      border-radius: 6px;
+    }
+    .featured-list-item {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1fr 1.2fr 0.6fr;
+      align-items: center;
+      gap: 0px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 15px;
+    }
+    .featured-list-item:last-child { border-bottom: none; }
+    .featured-symbol { font-weight: bold; color: #2a5db0; }
+    .featured-price { color: #1a9c3c; font-weight: bold; }
+    .featured-change {
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .featured-remove {
+      color: #bbb;
+      font-size: 18px;
+      cursor: pointer;
+      text-align: center;
+      transition: color 0.2s;
+      user-select: none;
+    }
+    .featured-remove:hover {
+      color: #d32f2f;
+    }
+    .featured-time { font-size: 12px; color: #888; margin-left: 8px; }
+    .add-stock-form { display: flex; gap: 8px; }
+    .add-stock-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 15px;
+    }
+    .add-stock-btn {
+      padding: 6px 16px;
+      background: #2a5db0;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .add-stock-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .error-msg { color: #d32f2f; font-size: 13px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="featured-stocks-panel">
+    <div class="featured-title">Featured Stocks</div>
+    <div class="featured-list" id="featuredList"></div>
+    <form class="add-stock-form" id="addStockForm">
+      <input class="add-stock-input" id="stockInput" type="text" placeholder="Enter stock symbol (e.g. TSLA)" maxlength="16" required />
+      <button class="add-stock-btn" id="addBtn" type="submit">Add</button>
+    </form>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+  <script>
+    // 初始三家公司
+    const defaultSymbols = ['AAPL', 'NVDA', 'META'];
+    // 拉取 featured-stocks 列表
+    async function fetchFeaturedStocks() {
+      const res = await fetch('/api/featured-stocks');
+      if (!res.ok) return [];
+      return await res.json();
+    }
+    // 添加新股票
+    async function addFeaturedStock(symbol) {
+      const res = await fetch('/api/featured-stocks/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol })
+      });
+      return await res.json();
+    }
+    // 时间格式化
+    function formatTime(dt) {
+      if (!dt) return '';
+      const d = new Date(dt);
+      return d.toLocaleString('zh-CN', { hour12: false });
+    }
+    // 渲染列表
+    function renderList(stocks) {
+      const list = document.getElementById('featuredList');
+      list.innerHTML = '';
+      stocks.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'featured-list-item';
+        // 颜色逻辑：change为负红色，正绿色
+        let priceColor = '#1a9c3c', changeColor = '#1a9c3c';
+        if (item.change < 0) { priceColor = '#db0011'; changeColor = '#db0011'; }
+        else if (item.change > 0) { priceColor = '#1a9c3c'; changeColor = '#1a9c3c'; }
+        else { priceColor = '#222'; changeColor = '#222'; }
+        div.innerHTML = `
+          <span class="featured-symbol" style="cursor:pointer;" data-symbol="${item.symbol}">${item.symbol}</span>
+          <span class="featured-price" style="color:${priceColor}">${item.price ?? '-'}</span>
+          <span class="featured-change" style="color:${changeColor}">${item.change !== undefined ? (item.change > 0 ? '+' : '') + item.change.toFixed(2) + '%' : '-'}</span>
+          <span class="featured-time">${formatTime(item.updated_at)}</span>
+          <span class="featured-remove" title="Remove" data-symbol="${item.symbol}">&#10005;</span>
+        `;
+        list.appendChild(div);
+      });
+      // 绑定删除事件
+      list.querySelectorAll('.featured-remove').forEach(btn => {
+        btn.onclick = async function() {
+          const symbol = this.getAttribute('data-symbol');
+          if (!symbol) return;
+          this.style.color = '#d32f2f';
+          this.style.pointerEvents = 'none';
+          try {
+            const res = await fetch('/api/featured-stocks/remove', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ symbol })
+            });
+            const result = await res.json();
+            if (result.success) {
+              currentStocks = currentStocks.filter(s => s.symbol !== symbol);
+              renderList(currentStocks);
+            }
+          } catch {}
+        };
+      });
+    }
+    // 初始化 featured-stocks 表（如为空则插入三家公司）
+    async function ensureDefaultStocks() {
+      let stocks = await fetchFeaturedStocks();
+      if (stocks.length === 0) {
+        for (const symbol of defaultSymbols) {
+          await addFeaturedStock(symbol);
+        }
+        stocks = await fetchFeaturedStocks();
+      }
+      return stocks;
+    }
+    // 页面加载
+    let currentStocks = [];
+    async function loadStocks() {
+      currentStocks = await ensureDefaultStocks();
+      renderList(currentStocks);
+    }
+    loadStocks();
+    // 添加新股票事件
+    document.getElementById('addStockForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('stockInput');
+      const symbol = input.value.trim().toUpperCase();
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.textContent = '';
+      if (!symbol) return;
+      if (currentStocks.find(s => s.symbol === symbol)) {
+        errorMsg.textContent = '该股票已在列表中';
+        return;
+      }
+      // 不再限制最多5家公司
+      document.getElementById('addBtn').disabled = true;
+      try {
+        const result = await addFeaturedStock(symbol);
+        if (result.error) {
+          errorMsg.textContent = result.error;
+        } else {
+          currentStocks.push(result);
+          renderList(currentStocks);
+          input.value = '';
+        }
+      } catch (err) {
+        errorMsg.textContent = '添加失败，请重试';
+      }
+      document.getElementById('addBtn').disabled = false;
+    });
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -199,6 +418,11 @@
               </div>
               <button type="submit" id="updateAssetBtn" style="margin-top:10px; background:#db0011; color:#fff; border:none; border-radius:8px; padding:10px 32px; font-size:1.08rem; font-weight:700; cursor:pointer;">Update</button>
             </form>
+            <div id="stockPriceBox" style="flex:0 0 220px; display:flex; flex-direction:column; align-items:flex-start; gap:12px; padding:20px; border-left:1px solid #eee;">
+              <div style="font-size:1.08rem; font-weight:600; color:#222;">AAPL 当前股价</div>
+              <div id="aaplPrice" style="font-size:1.25rem; color:#db0011; font-weight:700;">--</div>
+              <div style="font-size:0.95rem; color:#888;">页面刷新时获取最新股价</div>
+            </div>
           </div>
         </div>
         <canvas id="portfolioChart"></canvas>
@@ -206,5 +430,19 @@
     </main>
   </div>
   <script src="script-api.js"></script>
+  <script>
+    async function fetchAAPLPrice() {
+      try {
+        const res = await fetch('/api/stock/aapl');
+        if (!res.ok) throw new Error('API请求失败');
+        const data = await res.json();
+        document.getElementById('aaplPrice').textContent = data.price ? `$${data.price}` : '--';
+      } catch (err) {
+        document.getElementById('aaplPrice').textContent = '--';
+      }
+    }
+    // 仅页面加载时获取一次
+    fetchAAPLPrice();
+  </script>
 </body>
 </html>
