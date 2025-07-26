@@ -1,3 +1,10 @@
+// 新建表结构 SQL（可在数据库初始化时执行）
+// CREATE TABLE IF NOT EXISTS stock_prices (
+//   id INT PRIMARY KEY AUTO_INCREMENT,
+//   symbol VARCHAR(16) UNIQUE,
+//   price DECIMAL(12,4),
+//   updated_at DATETIME
+// );
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -87,6 +94,16 @@ async function createTables() {
   await db.execute(createPortfolioTable);
   await db.execute(createAssetsTable);
   await db.execute(createPerformanceTable);
+  // 新建 featured_stocks 表
+  const createFeaturedStocksTable = `
+    CREATE TABLE IF NOT EXISTS featured_stocks (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      symbol VARCHAR(16) UNIQUE,
+      price DECIMAL(12,4),
+      updated_at DATETIME
+    )
+  `;
+  await db.execute(createFeaturedStocksTable);
   
   console.log('✅ Database tables created successfully');
 }
@@ -157,6 +174,59 @@ async function seedInitialData() {
 }
 
 // API Routes
+// 删除 featured 栏目股票
+app.post('/api/featured-stocks/remove', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
+  try {
+    await db.execute('DELETE FROM featured_stocks WHERE symbol = ?', [symbol]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除失败' });
+  }
+});
+// 获取 featured 栏目股票列表
+app.get('/api/featured-stocks', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT symbol, price, updated_at FROM featured_stocks ORDER BY updated_at DESC');
+    // 获取每只股票的涨跌幅（change百分比）
+    const yahooFinance = require('yahoo-finance2').default;
+    const result = await Promise.all(rows.map(async row => {
+      try {
+        const quote = await yahooFinance.quote(row.symbol);
+        let change = null;
+        if (quote && typeof quote.regularMarketChangePercent === 'number') {
+          change = quote.regularMarketChangePercent;
+        }
+        return { ...row, change };
+      } catch {
+        return { ...row, change: null };
+      }
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: '获取栏目股票列表失败' });
+  }
+});
+
+// 添加新 featured 栏目股票
+app.post('/api/featured-stocks/add', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
+  try {
+    const yahooFinance = require('yahoo-finance2').default;
+    const quote = await yahooFinance.quote(symbol);
+    const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+    const now = new Date();
+    await db.execute(
+      'INSERT INTO featured_stocks (symbol, price, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, updated_at = ?',
+      [symbol, price, now, price, now]
+    );
+    res.json({ symbol, price, updated_at: now });
+  } catch (err) {
+    res.status(500).json({ error: '添加或获取股价失败' });
+  }
+});
 
 // Get portfolio summary
 app.get('/api/portfolio', async (req, res) => {
@@ -283,6 +353,19 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve the frontend
+
+// 获取AAPL股价API
+const yahooFinance = require('yahoo-finance2').default;
+app.get('/api/stock/aapl', async (req, res) => {
+  try {
+    const quote = await yahooFinance.quote('AAPL');
+    const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+    res.json({ price });
+  } catch (err) {
+    res.status(500).json({ error: '获取股价失败' });
+  }
+});
+
 app.get('/', (req, res) => {
   res.sendFile(__dirname + '/index.html');
 });
