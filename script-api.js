@@ -35,8 +35,10 @@ function togglePrivacyMode() {
     privacyToggle.title = 'Hide Financial Data';
   }
   
-  // 重新更新头部信息以应用隐私设置
-  updatePortfolioHeader(window.currentRange || '7d');
+  // 重新更新头部信息和图表以应用隐私设置（保持当前区间）
+  const range = typeof currentRange === 'string' ? currentRange : (window.currentRange || '7d');
+  updatePortfolioHeader(range);
+  updateChart(range);
 }
 
 // 清除缓存函数
@@ -276,13 +278,15 @@ async function updateChart(range = '7d') {
             ticks: { color: '#222', font: { size: 14 } },
           },
           y: {
-            grid: { color: '#f3f4f6' },
-            ticks: { color: '#222', font: { size: 14 } },
+            grid: { display: false },
+            ticks: { color: isPrivacyMode ? '#fff' : '#222', font: { size: 14 } },
           },
         },
       }
     });
   } else {
+    // 隐私模式下所有区间y轴刻度为白色，否则为深色
+    chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
     chart.data.labels = labels;
     chart.data.datasets[0].data = values;
     chart.update();
