@@ -15,7 +15,8 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.12);
       padding: 20px 18px 18px 18px;
       margin-left: 32px;
-      height: 100%;
+      margin-top: 400px; /* 下移 300px */
+      height: 500px; /* 固定高度 */
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -26,7 +27,7 @@
       margin-bottom: 12px;
     }
     .featured-list {
-      max-height: 300px;
+      max-height: 250px;
       overflow-y: auto;
       margin-bottom: 12px;
       border: 1px solid #eee;
@@ -102,7 +103,7 @@
 
     .dashboard-container {
       max-width: 1550px;
-      height: 650px;
+      height: 1100px;
       margin: 40px auto;
       background: #fff;
       border-radius: 18px;
@@ -267,47 +268,46 @@
       <!-- 主趋势图和 featured-stocks-panel 并列 -->
       <div style="display:flex; width:100%; align-items:flex-start;">
         <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-          <div class="dashboard-nav">
-            <button class="nav-btn nav-performance active">Performance</button>
-            <button class="nav-btn nav-allocation">Allocation</button>
-          </div>
-          <div class="dashboard-content" id="dashboardContent">
-            <div id="allocationSection" style="display:none; width:100%;">
-              <div style="display:flex; align-items:center; gap:32px; width:100%;">
-                <div style="flex:0 0 400px; display:flex; align-items:center; justify-content:center; padding:20px;">
-                  <canvas id="allocationChart" style="max-width:360px; max-height:360px;"></canvas>
-                </div>
-                <form id="allocationForm" style="flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:18px;">
-                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                    <label><input type="radio" name="assetType" value="Cash" checked> Cash</label>
-                    <label><input type="radio" name="assetType" value="Stock"> Stock</label>
-                    <label><input type="radio" name="assetType" value="Bond"> Bond</label>
-                    <label><input type="radio" name="assetType" value="Other"> Other</label>
+          <div style="display:flex; width:100%; align-items:flex-start;">
+            <div class="dashboard-nav" style="display:flex; flex-direction:column; gap:16px; margin-right:24px; align-items:flex-start; justify-content:flex-start;">
+              <button class="nav-btn nav-performance active">Performance</button>
+              <button class="nav-btn nav-allocation">Allocation</button>
+            </div>
+            <div class="dashboard-content" id="dashboardContent" style="flex:1;">
+              <div id="allocationSection" style="display:none; width:100%;">
+                <div style="display:flex; align-items:center; gap:32px; width:100%;">
+                  <div style="flex:0 0 400px; display:flex; align-items:center; justify-content:center; padding:20px;">
+                    <canvas id="allocationChart" style="max-width:360px; max-height:360px;"></canvas>
                   </div>
-                  <div style="margin-top:8px; width:100%;">
-                    <input type="number" id="assetChange" placeholder="Enter change" style="width:180px; padding:6px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc;">
-                  </div>
-                  <button type="submit" id="updateAssetBtn" style="margin-top:10px; background:#db0011; color:#fff; border:none; border-radius:8px; padding:10px 32px; font-size:1.08rem; font-weight:700; cursor:pointer;">Update</button>
-                </form>
-                <div id="stockPriceBox" style="flex:0 0 220px; display:flex; flex-direction:column; align-items:flex-start; gap:12px; padding:20px; border-left:1px solid #eee;">
-                  <div style="font-size:1.08rem; font-weight:600; color:#222;">AAPL 当前股价</div>
-                  <div id="aaplPrice" style="font-size:1.25rem; color:#db0011; font-weight:700;">--</div>
-                  <div style="font-size:0.95rem; color:#888;">页面刷新时获取最新股价</div>
+                  <form id="allocationForm" style="flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:18px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                      <label><input type="radio" name="assetType" value="Cash" checked> Cash</label>
+                      <label><input type="radio" name="assetType" value="Stock"> Stock</label>
+                      <label><input type="radio" name="assetType" value="Bond"> Bond</label>
+                      <label><input type="radio" name="assetType" value="Other"> Other</label>
+                    </div>
+                    <div style="margin-top:8px; width:100%;">
+                      <input type="number" id="assetChange" placeholder="Enter change" style="width:180px; padding:6px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc;">
+                    </div>
+                    <button type="submit" id="updateAssetBtn" style="margin-top:10px; background:#db0011; color:#fff; border:none; border-radius:8px; padding:10px 32px; font-size:1.08rem; font-weight:700; cursor:pointer;">Update</button>
+                  </form>
                 </div>
               </div>
+              <canvas id="portfolioChart"></canvas>
             </div>
-            <canvas id="portfolioChart"></canvas>
           </div>
         </div>
         <!-- Featured Stocks 栏目嵌入右侧 -->
         <div class="featured-stocks-panel">
-          <div class="featured-title">Featured Stocks</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <div class="featured-title" style="margin-bottom:0;">Featured Stocks</div>
+            <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
+              <input class="add-stock-input" id="stockInput" type="text" placeholder="Symbol" maxlength="16" required style="width:70px; padding:4px 8px; font-size:14px;" />
+              <button class="add-stock-btn" id="addBtn" type="submit" style="width:44px; font-size:14px; padding:4px 0;">Add</button>
+            </form>
+          </div>
           <div class="featured-list" id="featuredList"></div>
-          <form class="add-stock-form" id="addStockForm">
-            <input class="add-stock-input" id="stockInput" type="text" placeholder="Enter stock symbol (e.g. TSLA)" maxlength="16" required />
-            <button class="add-stock-btn" id="addBtn" type="submit">Add</button>
-          </form>
-          <div class="error-msg" id="errorMsg"></div>
+          <div class="error-msg" id="errorMsg" style="margin-bottom:0;"></div>
         </div>
       </div>
     </main>
