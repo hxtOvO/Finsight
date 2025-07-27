@@ -344,36 +344,36 @@
     // Allocation Pie Chart 渲染
     document.addEventListener('DOMContentLoaded', function() {
       const ctx = document.getElementById('allocationChart').getContext('2d');
-      // mock 数据
-      // Cathay Pacific palette: Jade, Medium Jade, Sand, Light Slate
       const cathayColors = ['#006560', '#5b7d79', '#c1b89a', '#e9e9e8'];
-      const data = {
-        labels: ['Cash', 'Stock', 'Bond', 'Other'],
-        datasets: [{
-          data: [20, 50, 20, 10],
-          backgroundColor: cathayColors,
-          borderWidth: 2,
-          borderColor: '#fff',
-        }]
-      };
-      new Chart(ctx, {
-        type: 'pie',
-        data,
-        options: {
-          plugins: {
-            legend: { display: false },
-            tooltip: {
-              bodyFont: {
-                size: 22 // 字体更大
-              },
-              titleFont: {
-                size: 22 // 标题字体更大
-              },
-              padding: 12
+      fetch('/api/assets')
+        .then(res => res.json())
+        .then(assetData => {
+          const labels = assetData.map(a => a.asset_type);
+          const values = assetData.map(a => a.value);
+          const data = {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: cathayColors,
+              borderWidth: 2,
+              borderColor: '#fff',
+            }]
+          };
+          new Chart(ctx, {
+            type: 'pie',
+            data,
+            options: {
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  bodyFont: { size: 22 },
+                  titleFont: { size: 22 },
+                  padding: 12
+                }
+              }
             }
-          }
-        }
-      });
+          });
+        });
     });
     // Allocation Pie Chart 现在始终显示在右上角，无需切换隐藏
     const defaultSymbols = ['AAPL', 'NVDA', 'META'];
