@@ -9,14 +9,14 @@
   <style>
     /* Featured Stocks 栏目样式 */
     .featured-stocks-panel {
-      width: 420px;
+      width: 300px;
       background: #fff;
       border-radius: 8px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.12);
       padding: 20px 18px 18px 18px;
-      margin-left: 32px;
-      margin-top: 400px; /* 下移 300px */
-      height: 500px; /* 固定高度 */
+      margin-left: 0;
+      margin-top: 0px; /* 下移 300px */
+      height: 800px; /* 固定高度 */
       display: flex;
       flex-direction: column;
       justify-content: flex-start;
@@ -223,8 +223,7 @@
 
     #portfolioChart {
       width: 100% !important;
-      max-width: 600px;
-      height: 320px !important;
+      height: 100% !important;
       margin-right: 0;
     }
 
@@ -248,8 +247,12 @@
 
   <div class="dashboard-container">
     <header class="dashboard-header">
-      <div class="header-left">
+      <div class="header-left" style="display:flex; align-items:center; gap:18px;">
         <span class="app-name">FINSIGHT</span>
+        <div class="dashboard-nav" style="display:flex; flex-direction:row; gap:12px; margin-left:18px;">
+          <button class="nav-btn nav-performance active">Performance</button>
+          <button class="nav-btn nav-allocation">Allocation</button>
+        </div>
       </div>
       <div class="header-right">
         <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode">
@@ -265,40 +268,36 @@
       </div>
     </header>
     <main class="dashboard-main">
-      <!-- 主趋势图和 featured-stocks-panel 并列 -->
-      <div style="display:flex; width:100%; align-items:flex-start;">
-        <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-          <div style="display:flex; width:100%; align-items:flex-start;">
-            <div class="dashboard-nav" style="display:flex; flex-direction:column; gap:16px; margin-right:24px; align-items:flex-start; justify-content:flex-start;">
-              <button class="nav-btn nav-performance active">Performance</button>
-              <button class="nav-btn nav-allocation">Allocation</button>
-            </div>
-            <div class="dashboard-content" id="dashboardContent" style="flex:1;">
+      <!-- 田字格 2x2 主界面布局 -->
+      <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:32px; width:100%; height:800px; margin-top:16px;">
+        <!-- 6:4分布，左侧更宽 -->
+        <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
+          <div style="width:100%;">
+            <!-- dashboard-nav已移至header-left -->
+            <div class="dashboard-content" id="dashboardContent" style="width:100%;">
               <div id="allocationSection" style="display:none; width:100%;">
-                <div style="display:flex; align-items:center; gap:32px; width:100%;">
-                  <div style="flex:0 0 400px; display:flex; align-items:center; justify-content:center; padding:20px;">
-                    <canvas id="allocationChart" style="max-width:360px; max-height:360px;"></canvas>
-                  </div>
-                  <form id="allocationForm" style="flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:18px;">
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                      <label><input type="radio" name="assetType" value="Cash" checked> Cash</label>
-                      <label><input type="radio" name="assetType" value="Stock"> Stock</label>
-                      <label><input type="radio" name="assetType" value="Bond"> Bond</label>
-                      <label><input type="radio" name="assetType" value="Other"> Other</label>
-                    </div>
-                    <div style="margin-top:8px; width:100%;">
-                      <input type="number" id="assetChange" placeholder="Enter change" style="width:180px; padding:6px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc;">
-                    </div>
-                    <button type="submit" id="updateAssetBtn" style="margin-top:10px; background:#db0011; color:#fff; border:none; border-radius:8px; padding:10px 32px; font-size:1.08rem; font-weight:700; cursor:pointer;">Update</button>
-                  </form>
-                </div>
+                <!-- Pie chart removed from here -->
               </div>
               <canvas id="portfolioChart"></canvas>
             </div>
           </div>
         </div>
-        <!-- Featured Stocks 栏目嵌入右侧 -->
-        <div class="featured-stocks-panel">
+        <!-- Top Right: Allocation Pie Chart -->
+        <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; align-items:flex-start; justify-content:flex-start; width:100%;">
+          <div style="display:flex; align-items:center; justify-content:flex-start; width:85%; height:100%; margin-left:2px;">
+            <canvas id="allocationChart" style="max-width:351px; max-height:351px;"></canvas>
+            <div id="allocationLegend" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-left:10px; gap:14px; ">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#006560; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(0,101,96,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Cash</span></div>
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#5b7d79; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(91,125,121,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Stock</span></div>
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#c1b89a; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(193,184,154,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Bond</span></div>
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#e9e9e8; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(233,233,232,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Other</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom Left: 空 -->
+        <div style="grid-column:1/2; grid-row:2/3; background:#f8fafc; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.04); display:flex; align-items:center; justify-content:center; width:100%;"></div>
+        <!-- Bottom Right: Featured Stocks -->
+        <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%;">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
             <div class="featured-title" style="margin-bottom:0;">Featured Stocks</div>
             <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
@@ -315,6 +314,41 @@
   <script src="script-api.js"></script>
   <script>
     // Featured Stocks JS
+    // Allocation Pie Chart 渲染
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('allocationChart').getContext('2d');
+      // mock 数据
+      // Cathay Pacific palette: Jade, Medium Jade, Sand, Light Slate
+      const cathayColors = ['#006560', '#5b7d79', '#c1b89a', '#e9e9e8'];
+      const data = {
+        labels: ['Cash', 'Stock', 'Bond', 'Other'],
+        datasets: [{
+          data: [20, 50, 20, 10],
+          backgroundColor: cathayColors,
+          borderWidth: 2,
+          borderColor: '#fff',
+        }]
+      };
+      new Chart(ctx, {
+        type: 'pie',
+        data,
+        options: {
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              bodyFont: {
+                size: 22 // 字体更大
+              },
+              titleFont: {
+                size: 22 // 标题字体更大
+              },
+              padding: 12
+            }
+          }
+        }
+      });
+    });
+    // Allocation Pie Chart 现在始终显示在右上角，无需切换隐藏
     const defaultSymbols = ['AAPL', 'NVDA', 'META'];
     async function fetchFeaturedStocks() {
       const res = await fetch('/api/featured-stocks');
