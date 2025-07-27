@@ -252,6 +252,33 @@
         <div class="dashboard-nav" style="display:flex; flex-direction:row; gap:12px; margin-left:18px;">
           <button class="nav-btn nav-performance active">Performance</button>
           <button class="nav-btn nav-allocation">Allocation</button>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const perfBtn = document.querySelector('.nav-performance');
+        const allocBtn = document.querySelector('.nav-allocation');
+        const gridPanels = document.querySelectorAll('.dashboard-main > div > div, .dashboard-main > div > .featured-stocks-panel, .dashboard-main > div > div[id^=allocationLegend], .dashboard-main > div > canvas, .dashboard-main > div > .dashboard-content');
+        const gridRoot = document.querySelector('.dashboard-main > div');
+        function setTab(tab) {
+          if (tab === 'allocation') {
+            // 田字格所有panel留白
+            gridRoot.style.visibility = 'hidden';
+          } else {
+            gridRoot.style.visibility = 'visible';
+          }
+        }
+        perfBtn.addEventListener('click', function() {
+          perfBtn.classList.add('active');
+          allocBtn.classList.remove('active');
+          setTab('performance');
+        });
+        allocBtn.addEventListener('click', function() {
+          allocBtn.classList.add('active');
+          perfBtn.classList.remove('active');
+          setTab('allocation');
+        });
+        setTab('performance');
+      });
+    </script>
         </div>
       </div>
       <div class="header-right">
@@ -272,7 +299,7 @@
       <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:32px; width:100%; height:800px; margin-top:16px;">
         <!-- 6:4分布，左侧更宽 -->
         <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
-          <div style="width:100%;">
+          <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
             <!-- dashboard-nav已移至header-left -->
             <div class="dashboard-content" id="dashboardContent" style="width:100%;">
               <div id="allocationSection" style="display:none; width:100%;">
