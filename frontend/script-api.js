@@ -193,13 +193,19 @@ async function generateFallbackPerformanceData(range) {
 }
 
 function getLabelsFromData(data, range) {
-  if (range === '6m') {
-    // 6个月区间：每个数据点都显示月年
-    return data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
-  } else {
-    // 7天和1个月都显示月日格式
-    return data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
-  }
+    if (range === '6m') {
+        return data.map(item => {
+            const date = new Date(item.date);
+            // 手动构建 UTC 格式的日期字符串
+            return `${date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${date.getUTCFullYear()}`;
+        });
+    } else {
+        return data.map(item => {
+            const date = new Date(item.date);
+            // 手动构建 UTC 格式的日期字符串
+            return `${date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${date.getUTCDate()}`;
+        });
+    }
 }
 
 function getValuesFromData(data, range) {
@@ -218,6 +224,15 @@ async function updateChart(range = '7d') {
   const labels = getLabelsFromData(performanceData, range);
   const values = getValuesFromData(performanceData, range);
   
+  // 添加日志，检查处理后的数据
+  console.log('处理后的 labels:', labels);
+  console.log('处理后的 values:', values);
+    
+  // 确保数据长度一致
+  if (labels.length !== values.length) {
+      console.error('警告：labels 和 values 长度不一致！', labels.length, values.length);
+  }
+
   if (!chart) {
     const ctx = document.getElementById('portfolioChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 320);

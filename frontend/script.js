@@ -127,11 +127,11 @@ function updateChart(labels, data) {
         scales: {
           x: {
             grid: { display: false },
-            ticks: { font: { size: 18, family: 'Montserrat, Roboto, Arial, sans-serif' }, color: '#222' }
+            ticks: { font: { size: 20, family: 'consolas' }, color: '#222' }
           },
           y: {
             grid: { color: '#e5e7eb' }, beginAtZero: false,
-            ticks: { font: { size: 18, family: 'Montserrat, Roboto, Arial, sans-serif' }, color: '#222' }
+            ticks: { font: { size: 20, family: 'consolas' }, color: '#222' }
           }
         }
       }
