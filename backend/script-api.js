@@ -16,6 +16,30 @@ let allocationChart;
 let currentRange = '7d';
 let allocationDataCache = null;
 let performanceDataCache = {}; // 缓存性能数据
+let isPrivacyMode = true; // 默认开启隐私模式
+
+// Privacy mode functions
+function togglePrivacyMode() {
+  isPrivacyMode = !isPrivacyMode;
+  const privacyToggle = document.getElementById('privacyToggle');
+  
+  if (isPrivacyMode) {
+    // 隐私模式：隐藏敏感信息
+    privacyToggle.classList.remove('active');
+    privacyToggle.innerHTML = '<span class="privacy-icon">👁️‍🗨️</span>';
+    privacyToggle.title = 'Show Financial Data';
+  } else {
+    // 显示模式：显示所有信息
+    privacyToggle.classList.add('active');
+    privacyToggle.innerHTML = '<span class="privacy-icon">👁️</span>';
+    privacyToggle.title = 'Hide Financial Data';
+  }
+  
+  // 重新更新头部信息和图表以应用隐私设置（保持当前区间）
+  const range = typeof currentRange === 'string' ? currentRange : (window.currentRange || '7d');
+  updatePortfolioHeader(range);
+  updateChart(range);
+}
 
 // 清除缓存函数
 function clearPerformanceCache() {
@@ -47,13 +71,7 @@ async function fetchAssetData() {
     return await response.json();
   } catch (error) {
     console.error('Error fetching asset data:', error);
-    // Fallback to mock data
-    return [
-      { asset_type: 'Cash', value: 3000 },
-      { asset_type: 'Stock', value: 5500 },
-      { asset_type: 'Bond', value: 3200 },
-      { asset_type: 'Other', value: 840 }
-    ];
+    return [];
   }
 }
 
@@ -176,7 +194,7 @@ async function generateFallbackPerformanceData(range) {
 
 function getLabelsFromData(data, range) {
   if (range === '6m') {
-    // 6个月显示年月格式
+    // 6个月区间：每个数据点都显示月年
     return data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }));
   } else {
     // 7天和1个月都显示月日格式
@@ -254,13 +272,15 @@ async function updateChart(range = '7d') {
             ticks: { color: '#222', font: { size: 14 } },
           },
           y: {
-            grid: { color: '#f3f4f6' },
-            ticks: { color: '#222', font: { size: 14 } },
+            grid: { display: false },
+            ticks: { color: isPrivacyMode ? '#fff' : '#222', font: { size: 14 } },
           },
         },
       }
     });
   } else {
+    // 隐私模式下所有区间y轴刻度为白色，否则为深色
+    chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
     chart.data.labels = labels;
     chart.data.datasets[0].data = values;
     chart.update();
@@ -271,24 +291,38 @@ async function updatePortfolioHeader(range = '7d') {
   const portfolioData = await fetchPortfolioData();
   const performanceData = await fetchPerformanceData(range);
   
-  document.getElementById('portfolioValue').textContent = `Total: ${formatMoney(portfolioData.total_value)}`;
+  const portfolioValueElement = document.getElementById('portfolioValue');
+  const portfolioGainElement = document.getElementById('portfolioGain');
   
-  // 计算基于时间范围的涨跌幅
-  let gainLoss = 0;
-  let gainLossPercent = 0;
-  
-  if (performanceData && performanceData.length >= 2) {
-    const currentValue = performanceData[performanceData.length - 1].value; // 最新值
-    const startValue = performanceData[0].value; // 开始值
-    
-    gainLoss = currentValue - startValue;
-    gainLossPercent = ((gainLoss / startValue) * 100);
+  // 根据隐私模式决定显示内容
+  if (isPrivacyMode) {
+    portfolioValueElement.style.visibility = 'visible';
+    portfolioValueElement.textContent = 'Total: ****';
+    portfolioValueElement.style.color = '#fff';
+    portfolioGainElement.textContent = '+ $**** (+*.**%)';
+    portfolioGainElement.style.visibility = 'visible';
+    portfolioGainElement.style.color = '#fff';
+    portfolioGainElement.style.height = 'auto';
+    portfolioGainElement.className = 'portfolio-gain';
+  } else {
+    portfolioValueElement.style.visibility = 'visible';
+    portfolioValueElement.textContent = `Total: ${formatMoney(portfolioData.total_value)}`;
+    portfolioValueElement.style.color = '';
+    portfolioGainElement.style.visibility = 'visible';
+    // 计算基于时间范围的涨跌幅
+    let gainLoss = 0;
+    let gainLossPercent = 0;
+    if (performanceData && performanceData.length >= 2) {
+      const currentValue = performanceData[performanceData.length - 1].value;
+      const startValue = performanceData[0].value;
+      gainLoss = currentValue - startValue;
+      gainLossPercent = ((gainLoss / startValue) * 100);
+    }
+    const isPositive = gainLoss >= 0;
+    portfolioGainElement.textContent = `${isPositive ? '+' : '-'} ${formatMoney(Math.abs(gainLoss))} (${isPositive ? '+' : '-'}${Math.abs(gainLossPercent).toFixed(2)}%)`;
+    portfolioGainElement.className = `portfolio-gain ${isPositive ? 'positive' : 'negative'}`;
+    portfolioGainElement.style.color = '';
   }
-  
-  const gainElement = document.getElementById('portfolioGain');
-  const isPositive = gainLoss >= 0;
-  gainElement.textContent = `${isPositive ? '+' : '-'} ${formatMoney(Math.abs(gainLoss))} (${isPositive ? '+' : '-'}${Math.abs(gainLossPercent).toFixed(2)}%)`;
-  gainElement.className = `portfolio-gain ${isPositive ? 'positive' : 'negative'}`;
 }
 
 async function createAllocationChart() {
@@ -301,7 +335,7 @@ async function createAllocationChart() {
     }
     
     const labels = assetData.map(item => item.asset_type);
-    const values = assetData.map(item => item.value);
+    const values = assetData.map(item => Number(item.value));
     const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
     
     allocationChart = new Chart(ctx, {
@@ -336,7 +370,7 @@ async function createAllocationChart() {
               label: function(context) {
                 const label = context.label || '';
                 const value = context.parsed;
-                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const total = context.dataset.data.reduce((a, b) => Number(a) + Number(b), 0);
                 const percentage = Math.round((value / total) * 100);
                 return `${label}: ${formatMoney(value)} (${percentage}%)`;
               }
@@ -374,7 +408,7 @@ async function createAllocationChart() {
               const percentage = Math.round((value / total) * 100);
               
               // 在饼图扇形上显示百分比（如果扇形足够大）
-              if (percentage >= 25) { // 只有大于等于25%才显示
+              if (percentage >= 5) { // 只有大于等于30%才显示
                 const percentageRadius = radius * 0.7; // 百分比显示在扇形的70%位置
                 const percentageX = centerX + Math.cos(angle) * percentageRadius;
                 const percentageY = centerY + Math.sin(angle) * percentageRadius;
@@ -441,6 +475,7 @@ function showPerformanceSection() {
   console.log('📊 强制重置到7天视图，确保状态一致');
   
   updateChart(currentRange);
+  updatePortfolioHeader(currentRange);
 }
 
 async function showAllocationSection() {
@@ -465,6 +500,15 @@ async function showAllocationSection() {
 
 // Event listeners
 document.addEventListener('DOMContentLoaded', async function() {
+  // 初始化隐私模式为开启状态
+  isPrivacyMode = true;
+  
+  // 添加隐私切换按钮事件监听器
+  const privacyToggle = document.getElementById('privacyToggle');
+  if (privacyToggle) {
+    privacyToggle.addEventListener('click', togglePrivacyMode);
+  }
+  
   // 清除缓存确保获取新数据
   clearPerformanceCache();
   

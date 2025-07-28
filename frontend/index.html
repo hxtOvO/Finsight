@@ -7,6 +7,92 @@
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    /* Featured Stocks 栏目样式 */
+    .featured-stocks-panel {
+      width: 300px;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.12);
+      padding: 20px 18px 18px 18px;
+      margin-left: 0;
+      margin-top: 0px; /* 下移 300px */
+      height: 800px; /* 固定高度 */
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;
+    }
+    .featured-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 12px;
+    }
+    .featured-list {
+      max-height: 250px;
+      overflow-y: auto;
+      margin-bottom: 12px;
+      border: 1px solid #eee;
+      border-radius: 6px;
+      padding: 0;
+      background: #fafbfc;
+      scrollbar-width: thin;
+      scrollbar-color: #bbb #fafbfc;
+    }
+    .featured-list::-webkit-scrollbar {
+      width: 8px;
+      background: #fafbfc;
+    }
+    .featured-list::-webkit-scrollbar-thumb {
+      background: #bbb;
+      border-radius: 6px;
+    }
+    .featured-list-item {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr 1fr 1.2fr 0.6fr;
+      align-items: center;
+      gap: 0px;
+      padding: 10px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 15px;
+    }
+    .featured-list-item:last-child { border-bottom: none; }
+    .featured-symbol { font-weight: bold; color: #2a5db0; }
+    .featured-price { color: #1a9c3c; font-weight: bold; }
+    .featured-change {
+      font-weight: bold;
+      margin-left: 8px;
+    }
+    .featured-remove {
+      color: #bbb;
+      font-size: 18px;
+      cursor: pointer;
+      text-align: center;
+      transition: color 0.2s;
+      user-select: none;
+    }
+    .featured-remove:hover {
+      color: #d32f2f;
+    }
+    .featured-time { font-size: 12px; color: #888; margin-left: 8px; }
+    .add-stock-form { display: flex; gap: 8px; }
+    .add-stock-input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 15px;
+    }
+    .add-stock-btn {
+      padding: 6px 16px;
+      background: #2a5db0;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      font-size: 15px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .add-stock-btn:disabled { background: #aaa; cursor: not-allowed; }
+    .error-msg { color: #d32f2f; font-size: 13px; margin-top: 6px; }
     @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700&display=swap');
 
     body {
@@ -16,8 +102,8 @@
     }
 
     .dashboard-container {
-      max-width: 1200px;
-      max-width: 900px;
+      max-width: 1550px;
+      height: 1100px;
       margin: 40px auto;
       background: #fff;
       border-radius: 18px;
@@ -48,6 +134,34 @@
       font-weight: 700;
       letter-spacing: 1.2px;
       color: #db0011;
+      position: relative;
+      display: inline-block;
+    }
+
+    .logo-fin {
+      position: relative;
+      z-index: 2;
+      color: #db0011;
+    }
+
+    .logo-in-overlap {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 0.8em;
+      z-index: 1;
+    }
+
+    .logo-sight {
+      position: relative;
+      z-index: 2;
+      color: #db0011;
     }
 
     .header-right {
@@ -67,6 +181,7 @@
       font-size: 1rem;
       font-weight: 500;
       margin-bottom: 2px;
+      min-height: 1.5rem; /* 保证最小高度 */
     }
 
     .portfolio-gain.positive {
@@ -99,16 +214,17 @@
 
     .dashboard-main {
       width: 100%;
-      min-height: 320px;
+      min-height: 440px;
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: center;
+      gap: 0;
     }
 
     #portfolioChart {
       width: 100% !important;
-      max-width: 600px;
-      height: 320px !important;
+      height: 100% !important;
+      margin-right: 0;
     }
 
     @media (max-width: 800px) {
@@ -128,14 +244,49 @@
   </style>
 </head>
 <body>
+
   <div class="dashboard-container">
     <header class="dashboard-header">
-      <div class="header-left">
-        <span class="app-name">FinSight</span>
+      <div class="header-left" style="display:flex; align-items:center; gap:18px;">
+        <span class="app-name">FINSIGHT</span>
+        <div class="dashboard-nav" style="display:flex; flex-direction:row; gap:12px; margin-left:18px;">
+          <button class="nav-btn nav-performance active">Performance</button>
+          <button class="nav-btn nav-allocation">Allocation</button>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        const perfBtn = document.querySelector('.nav-performance');
+        const allocBtn = document.querySelector('.nav-allocation');
+        const gridPanels = document.querySelectorAll('.dashboard-main > div > div, .dashboard-main > div > .featured-stocks-panel, .dashboard-main > div > div[id^=allocationLegend], .dashboard-main > div > canvas, .dashboard-main > div > .dashboard-content');
+        const gridRoot = document.querySelector('.dashboard-main > div');
+        function setTab(tab) {
+          if (tab === 'allocation') {
+            // 田字格所有panel留白
+            gridRoot.style.visibility = 'hidden';
+          } else {
+            gridRoot.style.visibility = 'visible';
+          }
+        }
+        perfBtn.addEventListener('click', function() {
+          perfBtn.classList.add('active');
+          allocBtn.classList.remove('active');
+          setTab('performance');
+        });
+        allocBtn.addEventListener('click', function() {
+          allocBtn.classList.add('active');
+          perfBtn.classList.remove('active');
+          setTab('allocation');
+        });
+        setTab('performance');
+      });
+    </script>
+        </div>
       </div>
       <div class="header-right">
-        <div class="portfolio-value" id="portfolioValue">Total: $12,540.00</div>
-        <div class="portfolio-gain" id="portfolioGain">+ $230.00 (+1.87%)</div>
+        <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode">
+          <span class="privacy-icon">👁️‍🗨️</span>
+        </button>
+        <div class="portfolio-value" id="portfolioValue">Total: ****</div>
+        <div class="portfolio-gain" id="portfolioGain">+ $**** (+*.**%)</div>
         <div class="range-toggle">
           <button class="toggle-btn active" data-range="7d">7 Days</button>
           <button class="toggle-btn" data-range="1m">1 Month</button>
@@ -144,35 +295,199 @@
       </div>
     </header>
     <main class="dashboard-main">
-      <div class="dashboard-nav">
-        <button class="nav-btn nav-performance active">Performance</button>
-        <button class="nav-btn nav-allocation">Allocation</button>
-    
-      </div>
-      <div class="dashboard-content" id="dashboardContent">
-        <div id="allocationSection" style="display:none; width:100%;">
-          <div style="display:flex; align-items:center; gap:32px; width:100%;">
-            <div style="flex:0 0 400px; display:flex; align-items:center; justify-content:center; padding:20px;">
-              <canvas id="allocationChart" style="max-width:360px; max-height:360px;"></canvas>
+      <!-- 田字格 2x2 主界面布局 -->
+      <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:32px; width:100%; height:800px; margin-top:16px;">
+        <!-- 6:4分布，左侧更宽 -->
+        <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
+          <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+            <!-- dashboard-nav已移至header-left -->
+            <div class="dashboard-content" id="dashboardContent" style="width:100%;">
+              <div id="allocationSection" style="display:none; width:100%;">
+                <!-- Pie chart removed from here -->
+              </div>
+              <canvas id="portfolioChart"></canvas>
             </div>
-            <form id="allocationForm" style="flex:1; display:flex; flex-direction:column; align-items:flex-start; gap:18px;">
-              <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-                <label><input type="radio" name="assetType" value="Cash" checked> Cash</label>
-                <label><input type="radio" name="assetType" value="Stock"> Stock</label>
-                <label><input type="radio" name="assetType" value="Bond"> Bond</label>
-                <label><input type="radio" name="assetType" value="Other"> Other</label>
-              </div>
-              <div style="margin-top:8px; width:100%;">
-                <input type="number" id="assetChange" placeholder="Enter change" style="width:180px; padding:6px 10px; font-size:1rem; border-radius:6px; border:1px solid #ccc;">
-              </div>
-              <button type="submit" id="updateAssetBtn" style="margin-top:10px; background:#db0011; color:#fff; border:none; border-radius:8px; padding:10px 32px; font-size:1.08rem; font-weight:700; cursor:pointer;">Update</button>
-            </form>
           </div>
         </div>
-        <canvas id="portfolioChart"></canvas>
+        <!-- Top Right: Allocation Pie Chart -->
+        <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; align-items:flex-start; justify-content:flex-start; width:100%;">
+          <div style="display:flex; align-items:center; justify-content:flex-start; width:85%; height:100%; margin-left:2px;">
+            <canvas id="allocationChart" style="max-width:351px; max-height:351px;"></canvas>
+            <div id="allocationLegend" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-left:10px; gap:14px; ">
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#006560; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(0,101,96,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Cash</span></div>
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#5b7d79; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(91,125,121,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Stock</span></div>
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#c1b89a; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(193,184,154,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Bond</span></div>
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#e9e9e8; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(233,233,232,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Other</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- Bottom Left: 空 -->
+        <div style="grid-column:1/2; grid-row:2/3; background:#f8fafc; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.04); display:flex; align-items:center; justify-content:center; width:100%;"></div>
+        <!-- Bottom Right: Featured Stocks -->
+        <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+            <div class="featured-title" style="margin-bottom:0;">Featured Stocks</div>
+            <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
+              <input class="add-stock-input" id="stockInput" type="text" placeholder="Symbol" maxlength="16" required style="width:70px; padding:4px 8px; font-size:14px;" />
+              <button class="add-stock-btn" id="addBtn" type="submit" style="width:44px; font-size:14px; padding:4px 0;">Add</button>
+            </form>
+          </div>
+          <div class="featured-list" id="featuredList"></div>
+          <div class="error-msg" id="errorMsg" style="margin-bottom:0;"></div>
+        </div>
       </div>
     </main>
   </div>
   <script src="script-api.js"></script>
+  <script>
+    // Featured Stocks JS
+    // Allocation Pie Chart 渲染
+    document.addEventListener('DOMContentLoaded', function() {
+      const ctx = document.getElementById('allocationChart').getContext('2d');
+      const cathayColors = ['#006560', '#5b7d79', '#c1b89a', '#e9e9e8'];
+      fetch('/api/assets')
+        .then(res => res.json())
+        .then(assetData => {
+          const labels = assetData.map(a => a.asset_type);
+          const values = assetData.map(a => a.value);
+          const data = {
+            labels,
+            datasets: [{
+              data: values,
+              backgroundColor: cathayColors,
+              borderWidth: 2,
+              borderColor: '#fff',
+            }]
+          };
+          new Chart(ctx, {
+            type: 'pie',
+            data,
+            options: {
+              plugins: {
+                legend: { display: false },
+                tooltip: {
+                  bodyFont: { size: 22 },
+                  titleFont: { size: 22 },
+                  padding: 12
+                }
+              }
+            }
+          });
+        });
+    });
+    // Allocation Pie Chart 现在始终显示在右上角，无需切换隐藏
+    const defaultSymbols = ['AAPL', 'NVDA', 'META'];
+    async function fetchFeaturedStocks() {
+      const res = await fetch('/api/featured-stocks');
+      if (!res.ok) return [];
+      return await res.json();
+    }
+    async function addFeaturedStock(symbol) {
+      const res = await fetch('/api/featured-stocks/add', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ symbol })
+      });
+      return await res.json();
+    }
+    function formatTime(dt) {
+      if (!dt) return '';
+      const d = new Date(dt);
+      return d.toLocaleString('zh-CN', { hour12: false });
+    }
+    function renderList(stocks) {
+      const list = document.getElementById('featuredList');
+      list.innerHTML = '';
+      stocks.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'featured-list-item';
+        let priceColor = '#1a9c3c', changeColor = '#1a9c3c';
+        if (item.change < 0) { priceColor = '#db0011'; changeColor = '#db0011'; }
+        else if (item.change > 0) { priceColor = '#1a9c3c'; changeColor = '#1a9c3c'; }
+        else { priceColor = '#222'; changeColor = '#222'; }
+        div.innerHTML = `
+          <span class="featured-symbol" style="cursor:pointer;" data-symbol="${item.symbol}">${item.symbol}</span>
+          <span class="featured-price" style="color:${priceColor}">${item.price ?? '-'}</span>
+          <span class="featured-change" style="color:${changeColor}">${item.change !== undefined ? (item.change > 0 ? '+' : '') + item.change.toFixed(2) + '%' : '-'}</span>
+          <span class="featured-time">${formatTime(item.updated_at)}</span>
+          <span class="featured-remove" title="Remove" data-symbol="${item.symbol}">&#10005;</span>
+        `;
+        list.appendChild(div);
+      });
+      list.querySelectorAll('.featured-remove').forEach(btn => {
+        btn.onclick = async function() {
+          const symbol = this.getAttribute('data-symbol');
+          if (!symbol) return;
+          this.style.color = '#d32f2f';
+          this.style.pointerEvents = 'none';
+          try {
+            const res = await fetch('/api/featured-stocks/remove', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ symbol })
+            });
+            const result = await res.json();
+            if (result.success) {
+              currentStocks = currentStocks.filter(s => s.symbol !== symbol);
+              renderList(currentStocks);
+            }
+          } catch {}
+        };
+      });
+    }
+    async function ensureDefaultStocks() {
+      let stocks = await fetchFeaturedStocks();
+      if (stocks.length === 0) {
+        for (const symbol of defaultSymbols) {
+          await addFeaturedStock(symbol);
+        }
+        stocks = await fetchFeaturedStocks();
+      }
+      return stocks;
+    }
+    let currentStocks = [];
+    async function loadStocks() {
+      currentStocks = await ensureDefaultStocks();
+      renderList(currentStocks);
+    }
+    loadStocks();
+    document.getElementById('addStockForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const input = document.getElementById('stockInput');
+      const symbol = input.value.trim().toUpperCase();
+      const errorMsg = document.getElementById('errorMsg');
+      errorMsg.textContent = '';
+      if (!symbol) return;
+      if (currentStocks.find(s => s.symbol === symbol)) {
+        errorMsg.textContent = '该股票已在列表中';
+        return;
+      }
+      document.getElementById('addBtn').disabled = true;
+      try {
+        const result = await addFeaturedStock(symbol);
+        if (result.error) {
+          errorMsg.textContent = result.error;
+        } else {
+          await loadStocks(); // 重新 fetch 列表，保证 change 字段和股价都最新
+          input.value = '';
+        }
+      } catch (err) {
+        errorMsg.textContent = '添加失败，请重试';
+      }
+      document.getElementById('addBtn').disabled = false;
+    });
+    // 保留原有 AAPL 股价获取逻辑
+    async function fetchAAPLPrice() {
+      try {
+        const res = await fetch('/api/stock/aapl');
+        if (!res.ok) throw new Error('API请求失败');
+        const data = await res.json();
+        document.getElementById('aaplPrice').textContent = data.price ? `$${data.price}` : '--';
+      } catch (err) {
+        document.getElementById('aaplPrice').textContent = '--';
+      }
+    }
+    fetchAAPLPrice();
+  </script>
 </body>
 </html>
