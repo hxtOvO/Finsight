@@ -110,65 +110,103 @@ async function createTables() {
 
 // Seed initial data
 async function seedInitialData() {
-  // Check if data already exists
+  // portfolio
   const [portfolioRows] = await db.execute('SELECT COUNT(*) as count FROM portfolio');
-  const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
-  
   if (portfolioRows[0].count === 0) {
-    // Insert initial portfolio data
     await db.execute(
       'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
       [12540.00, 230.00, 1.87]
     );
-    
-    // Insert initial asset allocation
+  }
+
+  // assets
+  const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
+  if (assetRows[0].count === 0) {
     const initialAssets = [
       ['Cash', 3000.00],
       ['Stock', 5500.00],
       ['Bond', 3200.00],
       ['Other', 840.00]
     ];
-    
     for (const [type, value] of initialAssets) {
       await db.execute(
         'INSERT INTO assets (asset_type, value) VALUES (?, ?)',
         [type, value]
       );
     }
-    
-    // Get current total value for today's data point
-    const currentTotal = 12540.00;
-    const today = new Date().toISOString().split('T')[0];
-    
-    // 生成完整的180天历史数据（统一数据源）
-    const baseValue = 10000; // 180天前的起始值
+  }
+
+  // asset_history
+  try {
+    const [hisRows] = await db.execute('SELECT COUNT(*) as count FROM asset_history');
+    if (hisRows[0].count === 0) {
+      // 生成180天历史数据
+      const today = new Date();
+      for (let i = 0; i < 180; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        // 生成示例数据
+        const cash = 120000 - i * 100;
+        const stock = 41000 + (i % 10) * 1000 + Math.round(Math.random() * 1000);
+        const bond = 20000 + (i % 2) * 15000;
+        const other = 350000 - i * 500 + Math.round(Math.random() * 1000);
+        await db.execute(
+          'INSERT INTO asset_history (date, cash_value, stock_value, bond_value, other_value) VALUES (?, ?, ?, ?, ?)',
+          [dateStr, cash, stock, bond, other]
+        );
+      }
+      console.log('✅ asset_history 180天历史数据已生成');
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
+
+  // current_assets
+  try {
+    const [curRows] = await db.execute('SELECT COUNT(*) as count FROM current_assets');
+    if (curRows[0].count === 0) {
+      await db.execute("INSERT INTO current_assets (type, symbol, amount) VALUES ('cash', NULL, 5000), ('stock', 'AAPL', 10), ('stock', 'NVDA', 5), ('bond', NULL, 2000), ('other', NULL, 1000)");
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
+
+  // featured_stocks
+  try {
+    const [fsRows] = await db.execute('SELECT COUNT(*) as count FROM featured_stocks');
+    if (fsRows[0].count === 0) {
+      await db.execute("INSERT INTO featured_stocks (symbol, price, updated_at) VALUES ('AAPL', 180.00, NOW()), ('NVDA', 120.00, NOW()), ('TSLA', 250.00, NOW())");
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
+
+  // performance_history
+  const [perfRows] = await db.execute('SELECT COUNT(*) as count FROM performance_history');
+  if (perfRows[0].count === 0) {
+    const baseValue = 10000;
     const portfolioTotal = 12540.00;
     const dailyGrowthRate = Math.pow(portfolioTotal / baseValue, 1/179) - 1;
-    
     console.log('📊 生成180天完整历史数据...');
-    
     for (let i = 179; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      
       let value;
       if (i === 0) {
-        value = portfolioTotal; // 今天的值
+        value = portfolioTotal;
       } else {
-        // 添加一些随机波动使数据更真实
         const baseGrowth = baseValue * Math.pow(1 + dailyGrowthRate, 179 - i);
-        const randomFactor = 1 + (Math.random() - 0.5) * 0.02; // ±1%的随机波动
+        const randomFactor = 1 + (Math.random() - 0.5) * 0.02;
         value = baseGrowth * randomFactor;
         value = Math.round(value * 100) / 100;
       }
-      
       await db.execute(
         'INSERT IGNORE INTO performance_history (date, value, range_type) VALUES (?, ?, ?)',
-        [dateStr, value, 'all'] // 使用统一的标识
+        [dateStr, value, 'all']
       );
     }
-    
     console.log('✅ Initial data seeded successfully');
   }
 }
