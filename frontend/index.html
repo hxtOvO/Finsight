@@ -288,6 +288,37 @@
             <button class="manage-btn" data-type="Other">Other</button>
           `;
 
+          // 插入输入框（仅在Cash选中时显示）
+          const cashInputWrapper = document.createElement('div');
+          cashInputWrapper.id = 'cashInputWrapper';
+          cashInputWrapper.style.width = '100%';
+          cashInputWrapper.style.margin = '18px 0 0 0';
+          cashInputWrapper.style.display = 'none';
+          cashInputWrapper.style.height = '120px';
+          cashInputWrapper.style.display = 'flex';
+          cashInputWrapper.style.justifyContent = 'center';
+          cashInputWrapper.style.alignItems = 'center';
+          cashInputWrapper.style.flexDirection = 'column';
+          cashInputWrapper.style.transform = 'translate(300px, -280px)';
+          cashInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter the amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
+            </div>
+            <input id="cashAmountInput" type="number" step="0.01" min="0" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="cashInBtn" style="padding:12px 20px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s;box-shadow:0 2px 8px rgba(34,197,94,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Cash In +</button>
+              <button id="cashOutBtn" style="padding:12px 20px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s;box-shadow:0 2px 8px rgba(239,68,68,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Cash Out -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="transactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+          `;
+          managePanel.appendChild(cashInputWrapper);
+
           manageHistoryPanel = document.createElement('div');
           manageHistoryPanel.id = 'manageHistoryPanel';
           manageHistoryPanel.style.width = '33%';
@@ -340,10 +371,17 @@
           // 默认选中第一个
           let currentManageType = 'Cash';
           updateManageBtnActive(currentManageType);
+          // 控制输入框显示逻辑
+          function updateCashInputVisibility(type) {
+            const wrapper = document.getElementById('cashInputWrapper');
+            if (wrapper) wrapper.style.display = (type === 'Cash') ? 'block' : 'none';
+          }
+          updateCashInputVisibility(currentManageType);
           managePanel.querySelectorAll('.manage-btn').forEach(btn => {
             btn.addEventListener('click', function() {
               currentManageType = btn.getAttribute('data-type');
               updateManageBtnActive(currentManageType);
+              updateCashInputVisibility(currentManageType);
             });
           });
         }
