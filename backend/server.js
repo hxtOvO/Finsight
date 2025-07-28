@@ -1,3 +1,10 @@
+// 新建表结构 SQL（可在数据库初始化时执行）
+// CREATE TABLE IF NOT EXISTS stock_prices (
+//   id INT PRIMARY KEY AUTO_INCREMENT,
+//   symbol VARCHAR(16) UNIQUE,
+//   price DECIMAL(12,4),
+//   updated_at DATETIME
+// );
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
@@ -56,6 +63,17 @@ async function initDatabase() {
 
 // Create necessary tables
 async function createTables() {
+  // 新建 asset_history 表
+  const createAssetHistoryTable = `
+    CREATE TABLE IF NOT EXISTS asset_history (
+      date DATE PRIMARY KEY,
+      cash_value DECIMAL(12,2),
+      stock_value DECIMAL(12,2),
+      bond_value DECIMAL(12,2),
+      other_value DECIMAL(12,2)
+    )
+  `;
+  await db.execute(createAssetHistoryTable);
   const createPortfolioTable = `
     CREATE TABLE IF NOT EXISTS portfolio (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -89,16 +107,61 @@ async function createTables() {
   await db.execute(createPortfolioTable);
   await db.execute(createAssetsTable);
   await db.execute(createPerformanceTable);
+  // 新建 featured_stocks 表
+  const createFeaturedStocksTable = `
+    CREATE TABLE IF NOT EXISTS featured_stocks (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      symbol VARCHAR(16) UNIQUE,
+      price DECIMAL(12,4),
+      updated_at DATETIME
+    )
+  `;
+  await db.execute(createFeaturedStocksTable);
   
   console.log('✅ Database tables created successfully');
 }
 
 // Seed initial data
 async function seedInitialData() {
+  // 检查 asset_history 表是否存在且为空，若为空则生成180天历史数据
+  try {
+    const [hisRows] = await db.execute('SELECT COUNT(*) as count FROM asset_history');
+    if (hisRows[0].count === 0) {
+      // 生成180天历史数据
+      const today = new Date();
+      for (let i = 0; i < 180; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        // 生成示例数据（可根据实际需求调整生成逻辑）
+        const cash = 120000 - i * 100;
+        const stock = 41000 + (i % 10) * 1000 + Math.round(Math.random() * 1000);
+        const bond = 20000 + (i % 2) * 15000;
+        const other = 350000 - i * 500 + Math.round(Math.random() * 1000);
+        await db.execute(
+          'INSERT INTO asset_history (date, cash_value, stock_value, bond_value, other_value) VALUES (?, ?, ?, ?, ?)',
+          [dateStr, cash, stock, bond, other]
+        );
+      }
+      console.log('✅ asset_history 180天历史数据已生成');
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
   // Check if data already exists
   const [portfolioRows] = await db.execute('SELECT COUNT(*) as count FROM portfolio');
   const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
-  
+  // 检查 current_assets 表是否存在且为空
+  try {
+    const [curRows] = await db.execute('SELECT COUNT(*) as count FROM current_assets');
+    if (curRows[0].count === 0) {
+      // 自动生成 current_assets 示例数据
+      await db.execute("INSERT INTO current_assets (type, symbol, amount) VALUES ('cash', NULL, 5000), ('stock', 'AAPL', 10), ('stock', 'NVDA', 5), ('bond', NULL, 2000), ('other', NULL, 1000)");
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
+  // ...existing code...
   if (portfolioRows[0].count === 0) {
     // Insert initial portfolio data
     await db.execute(
@@ -159,6 +222,59 @@ async function seedInitialData() {
 }
 
 // API Routes
+// 删除 featured 栏目股票
+app.post('/api/featured-stocks/remove', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
+  try {
+    await db.execute('DELETE FROM featured_stocks WHERE symbol = ?', [symbol]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: '删除失败' });
+  }
+});
+// 获取 featured 栏目股票列表
+app.get('/api/featured-stocks', async (req, res) => {
+  try {
+    const [rows] = await db.execute('SELECT symbol, price, updated_at FROM featured_stocks ORDER BY updated_at DESC');
+    // 获取每只股票的涨跌幅（change百分比）
+    const yahooFinance = require('yahoo-finance2').default;
+    const result = await Promise.all(rows.map(async row => {
+      try {
+        const quote = await yahooFinance.quote(row.symbol);
+        let change = null;
+        if (quote && typeof quote.regularMarketChangePercent === 'number') {
+          change = quote.regularMarketChangePercent;
+        }
+        return { ...row, change };
+      } catch {
+        return { ...row, change: null };
+      }
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: '获取栏目股票列表失败' });
+  }
+});
+
+// 添加新 featured 栏目股票
+app.post('/api/featured-stocks/add', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
+  try {
+    const yahooFinance = require('yahoo-finance2').default;
+    const quote = await yahooFinance.quote(symbol);
+    const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+    const now = new Date();
+    await db.execute(
+      'INSERT INTO featured_stocks (symbol, price, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, updated_at = ?',
+      [symbol, price, now, price, now]
+    );
+    res.json({ symbol, price, updated_at: now });
+  } catch (err) {
+    res.status(500).json({ error: '添加或获取股价失败' });
+  }
+});
 
 // Get portfolio summary
 app.get('/api/portfolio', async (req, res) => {
@@ -177,8 +293,42 @@ app.get('/api/portfolio', async (req, res) => {
 // Get asset allocation
 app.get('/api/assets', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM assets ORDER BY asset_type');
-    res.json(rows);
+    // 查询 current_assets 表
+    const [rows] = await db.execute('SELECT * FROM current_assets');
+
+    // cash
+    const cashTotal = rows.filter(r => r.type === 'cash').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // bond
+    const bondTotal = rows.filter(r => r.type === 'bond').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // other
+    const otherTotal = rows.filter(r => r.type === 'other').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // stock：每行 amount * symbol 对应股价
+    const stockRows = rows.filter(r => r.type === 'stock');
+    let stockTotal = 0;
+    if (stockRows.length > 0) {
+      const symbols = stockRows.map(r => r.symbol);
+      if (symbols.length > 0) {
+        const placeholders = symbols.map(() => '?').join(',');
+        const [prices] = await db.execute(`SELECT symbol, price FROM featured_stocks WHERE symbol IN (${placeholders})`, symbols);
+        const priceMap = {};
+        prices.forEach(p => { priceMap[p.symbol] = Number(p.price); });
+        stockTotal = stockRows.reduce((sum, r) => {
+          const price = priceMap[r.symbol] || 0;
+          return sum + Number(r.amount) * price;
+        }, 0);
+      }
+    }
+
+    // 返回聚合结果
+    res.json([
+      { asset_type: 'Cash', value: cashTotal },
+      { asset_type: 'Stock', value: stockTotal },
+      { asset_type: 'Bond', value: bondTotal },
+      { asset_type: 'Other', value: otherTotal }
+    ]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -285,8 +435,21 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve the frontend
+
+// 获取AAPL股价API
+const yahooFinance = require('yahoo-finance2').default;
+app.get('/api/stock/aapl', async (req, res) => {
+  try {
+    const quote = await yahooFinance.quote('AAPL');
+    const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+    res.json({ price });
+  } catch (err) {
+    res.status(500).json({ error: '获取股价失败' });
+  }
+});
+
 // app.get('/', (req, res) => {
-//   res.sendFile(__dirname + '/../frontend/index.html');
+//   res.sendFile(__dirname + '/index.html');
 // });
 
 // Start server
