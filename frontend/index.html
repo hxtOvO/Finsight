@@ -248,33 +248,97 @@
   <div class="dashboard-container">
     <header class="dashboard-header">
       <div class="header-left" style="display:flex; align-items:center; gap:18px;">
-        <span class="app-name">FINSIGHT</span>
+        <span class="app-name"><span style="color:#222;">F</span>INSIGHT</span>
         <div class="dashboard-nav" style="display:flex; flex-direction:row; gap:12px; margin-left:18px;">
           <button class="nav-btn nav-performance active">Performance</button>
-          <button class="nav-btn nav-allocation">Allocation</button>
+          <button class="nav-btn nav-manage">Manage</button>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const perfBtn = document.querySelector('.nav-performance');
-        const allocBtn = document.querySelector('.nav-allocation');
-        const gridPanels = document.querySelectorAll('.dashboard-main > div > div, .dashboard-main > div > .featured-stocks-panel, .dashboard-main > div > div[id^=allocationLegend], .dashboard-main > div > canvas, .dashboard-main > div > .dashboard-content');
-        const gridRoot = document.querySelector('.dashboard-main > div');
+        const manageBtn = document.querySelector('.nav-manage');
+        const dashboardMain = document.querySelector('.dashboard-main');
+        const headerRight = document.querySelector('.header-right');
+        // manage tab 按钮容器
+        let managePanel = document.getElementById('managePanel');
+        if (!managePanel) {
+          managePanel = document.createElement('div');
+          managePanel.id = 'managePanel';
+          managePanel.style.display = 'none';
+          managePanel.style.width = '170px';
+          managePanel.style.margin = '48px 0 0 0';
+          managePanel.style.display = 'flex';
+          managePanel.style.flexDirection = 'column';
+          managePanel.style.alignItems = 'flex-start';
+          managePanel.style.justifyContent = 'flex-start';
+          managePanel.style.gap = '18px';
+          managePanel.innerHTML = `
+            <button class="manage-btn" data-type="Cash">Cash</button>
+            <button class="manage-btn" data-type="Stock">Stock</button>
+            <button class="manage-btn" data-type="Bond">Bond</button>
+            <button class="manage-btn" data-type="Other">Other</button>
+          `;
+        // 按钮选中样式逻辑
+        function updateManageBtnActive(selectedType) {
+          const btns = managePanel.querySelectorAll('.manage-btn');
+          btns.forEach(btn => {
+            if (btn.getAttribute('data-type') === selectedType) {
+            btn.style.background = '#db0011';
+            btn.style.color = '#fff';
+            btn.style.border = 'none';
+            } else {
+            btn.style.background = '#fff';
+            btn.style.color = '#222';
+            btn.style.border = 'none';
+            }
+            btn.style.padding = '12px 32px';
+            btn.style.borderRadius = '8px';
+            btn.style.fontSize = '20px';
+            btn.style.fontWeight = '600';
+            btn.style.cursor = 'pointer';
+            btn.style.textAlign = 'center';
+            btn.style.width = '100%';
+            btn.style.boxSizing = 'border-box';
+            btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
+            btn.style.transition = 'box-shadow 0.18s, background 0.18s, color 0.18s';
+            btn.onmouseover = function() {
+              btn.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
+            };
+            btn.onmouseout = function() {
+              btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
+            };
+          });
+        }
+        // 默认选中第一个
+        let currentManageType = 'Cash';
+        updateManageBtnActive(currentManageType);
+        managePanel.querySelectorAll('.manage-btn').forEach(btn => {
+          btn.addEventListener('click', function() {
+            currentManageType = btn.getAttribute('data-type');
+            updateManageBtnActive(currentManageType);
+          });
+        });
+          document.querySelector('.dashboard-container').appendChild(managePanel);
+        }
         function setTab(tab) {
-          if (tab === 'allocation') {
-            // 田字格所有panel留白
-            gridRoot.style.visibility = 'hidden';
-          } else {
-            gridRoot.style.visibility = 'visible';
+          if (tab === 'performance') {
+            perfBtn.classList.add('active');
+            manageBtn.classList.remove('active');
+            if (dashboardMain) dashboardMain.style.display = '';
+            if (headerRight) headerRight.style.display = '';
+            if (managePanel) managePanel.style.display = 'none';
+          } else if (tab === 'manage') {
+            perfBtn.classList.remove('active');
+            manageBtn.classList.add('active');
+            if (dashboardMain) dashboardMain.style.display = 'none';
+            if (headerRight) headerRight.style.display = 'none';
+            if (managePanel) managePanel.style.display = 'flex';
           }
         }
         perfBtn.addEventListener('click', function() {
-          perfBtn.classList.add('active');
-          allocBtn.classList.remove('active');
           setTab('performance');
         });
-        allocBtn.addEventListener('click', function() {
-          allocBtn.classList.add('active');
-          perfBtn.classList.remove('active');
-          setTab('allocation');
+        manageBtn.addEventListener('click', function() {
+          setTab('manage');
         });
         setTab('performance');
       });

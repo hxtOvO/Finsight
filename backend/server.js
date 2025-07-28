@@ -84,14 +84,15 @@ async function createTables() {
     )
   `;
 
-  const createAssetsTable = `
-    CREATE TABLE IF NOT EXISTS assets (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      asset_type ENUM('Cash', 'Stock', 'Bond', 'Other') NOT NULL,
-      value DECIMAL(12,2) NOT NULL,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )
-  `;
+  // 废弃 assets 表，因为它与 current_assets 功能重叠且导致数据不一致
+  // const createAssetsTable = `
+  //   CREATE TABLE IF NOT EXISTS assets (
+  //     id INT AUTO_INCREMENT PRIMARY KEY,
+  //     asset_type ENUM('Cash', 'Stock', 'Bond', 'Other') NOT NULL,
+  //     value DECIMAL(12,2) NOT NULL,
+  //     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  //   )
+  // `;
 
   const createPerformanceTable = `
     CREATE TABLE IF NOT EXISTS performance_history (
@@ -124,13 +125,43 @@ async function createTables() {
   `;
 
   await db.execute(createPortfolioTable);
-  await db.execute(createAssetsTable);
+  // await db.execute(createAssetsTable); // 移除 assets 表的创建
   await db.execute(createPerformanceTable);
   await db.execute(createFeaturedStocksTable);
   await db.execute(createCurrentAssetsTable);
-  
+
   console.log('✅ Database tables created successfully');
 }
+
+// 封装一个函数来计算当前总资产价值
+async function calculateCurrentTotalValue() {
+  const [currentAssetRows] = await db.execute('SELECT * FROM current_assets');
+  let calculatedTotal = 0;
+  let stockValue = 0;
+
+  const stockRows = currentAssetRows.filter(r => r.type === 'stock');
+  if (stockRows.length > 0) {
+    const symbols = stockRows.map(r => r.symbol);
+    if (symbols.length > 0) {
+      // 从 featured_stocks 获取最新股价
+      const placeholders = symbols.map(() => '?').join(',');
+      const [prices] = await db.execute(`SELECT symbol, price FROM featured_stocks WHERE symbol IN (${placeholders})`, symbols);
+      const priceMap = {};
+      prices.forEach(p => { priceMap[p.symbol] = Number(p.price); });
+      stockValue = stockRows.reduce((sum, r) => {
+        const price = priceMap[r.symbol] || 0;
+        return sum + Number(r.amount) * price;
+      }, 0);
+    }
+  }
+
+  // 计算现金、债券、其他（非股票部分）
+  const nonStockValue = currentAssetRows.filter(r => r.type !== 'stock').reduce((sum, r) => sum + Number(r.amount), 0);
+
+  calculatedTotal = nonStockValue + stockValue;
+  return parseFloat(calculatedTotal.toFixed(2)); // 精确到两位小数
+}
+
 
 // Seed initial data
 async function seedInitialData() {
@@ -158,62 +189,62 @@ async function seedInitialData() {
     }
   } catch (e) {
     // 表不存在则跳过
+    console.warn('asset_history table might not exist or is not empty, skipping initial data seeding for it.');
   }
-  // Check if data already exists
-  const [portfolioRows] = await db.execute('SELECT COUNT(*) as count FROM portfolio');
-  const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
+
   // 检查 current_assets 表是否存在且为空
   try {
     const [curRows] = await db.execute('SELECT COUNT(*) as count FROM current_assets');
     if (curRows[0].count === 0) {
       // 自动生成 current_assets 示例数据
       await db.execute("INSERT INTO current_assets (type, symbol, amount) VALUES ('cash', NULL, 5000), ('stock', 'AAPL', 10), ('stock', 'NVDA', 5), ('bond', NULL, 2000), ('other', NULL, 1000)");
+      console.log('✅ current_assets 示例数据已生成');
     }
   } catch (e) {
     // 表不存在则跳过
+    console.warn('current_assets table might not exist or is not empty, skipping initial data seeding for it.');
   }
-  // ...existing code...
+
+  // 检查 portfolio 表是否存在且为空，若为空则根据 current_assets 计算并生成
+  const [portfolioRows] = await db.execute('SELECT COUNT(*) as count FROM portfolio');
+
   if (portfolioRows[0].count === 0) {
-    // Insert initial portfolio data
+    console.log('✨ Initializing portfolio data based on current_assets...');
+
+    const initialTotalValue = await calculateCurrentTotalValue(); // 计算今天的总价值
+
+    // 初始投资额，可以设为今天的总价值，或者一个固定的基准值
+    // 如果是第一次初始化，没有历史数据，gain/loss 可以设为 0
+    const initialGainLoss = 0.00;
+    const initialGainLossPercent = 0.00;
+
     await db.execute(
       'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
-      [12540.00, 230.00, 1.87]
+      [initialTotalValue, initialGainLoss, initialGainLossPercent]
     );
-    
-    // Insert initial asset allocation
-    const initialAssets = [
-      ['Cash', 3000.00],
-      ['Stock', 5500.00],
-      ['Bond', 3200.00],
-      ['Other', 840.00]
-    ];
-    
-    for (const [type, value] of initialAssets) {
-      await db.execute(
-        'INSERT INTO assets (asset_type, value) VALUES (?, ?)',
-        [type, value]
-      );
-    }
-    
-    // Get current total value for today's data point
-    const currentTotal = 12540.00;
-    const today = new Date().toISOString().split('T')[0];
-    
+    console.log(`✅ Portfolio initialized with total_value: $${initialTotalValue.toFixed(2)}`);
+
+    // 移除 assets 表的插入逻辑，因为它不再是主要数据源
+    // const initialAssets = [ ... ];
+    // for (const [type, value] of initialAssets) { ... }
+
     // 生成完整的180天历史数据（统一数据源）
-    const baseValue = 10000; // 180天前的起始值
-    const portfolioTotal = 12540.00;
-    const dailyGrowthRate = Math.pow(portfolioTotal / baseValue, 1/179) - 1;
-    
+    // 这里的逻辑需要调整，让今天的历史数据点是 initialTotalValue
+    const baseValue = 10000; // 180天前的起始值，可以根据需要调整
+    const portfolioTotal = initialTotalValue; // 使用计算出的今天总价值
+    // 确保 baseValue 不为 0，避免除以 0
+    const dailyGrowthRate = baseValue === 0 ? 0 : (Math.pow(portfolioTotal / baseValue, 1/179) - 1);
+
     console.log('📊 生成180天完整历史数据...');
-    
+
     for (let i = 179; i >= 0; i--) {
       const date = new Date();
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
-      
+
       let value;
       if (i === 0) {
-        value = portfolioTotal; // 今天的值
+        value = portfolioTotal; // 今天的值就是计算出的 initialTotalValue
       } else {
         // 添加一些随机波动使数据更真实
         const baseGrowth = baseValue * Math.pow(1 + dailyGrowthRate, 179 - i);
@@ -221,15 +252,17 @@ async function seedInitialData() {
         value = baseGrowth * randomFactor;
         value = Math.round(value * 100) / 100;
       }
-      
+
       await db.execute(
         'INSERT IGNORE INTO performance_history (date, value, range_type) VALUES (?, ?, ?)',
         [dateStr, value, 'all'] // 使用统一的标识
       );
     }
-    
+
     console.log('✅ Initial data seeded successfully');
   }
+  // 移除对 assets 表的检查，因为它已被废弃
+  // const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
 }
 
 // API Routes
@@ -258,12 +291,14 @@ app.get('/api/featured-stocks', async (req, res) => {
           change = quote.regularMarketChangePercent;
         }
         return { ...row, change };
-      } catch {
+      } catch (err) {
+          console.error(`Error fetching quote for ${row.symbol}:`, err.message);
         return { ...row, change: null };
       }
     }));
     res.json(result);
   } catch (err) {
+    console.error('Error fetching featured stocks:', err);
     res.status(500).json({ error: '获取栏目股票列表失败' });
   }
 });
@@ -276,6 +311,9 @@ app.post('/api/featured-stocks/add', async (req, res) => {
     const yahooFinance = require('yahoo-finance2').default;
     const quote = await yahooFinance.quote(symbol);
     const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+    if (price === null) {
+        return res.status(400).json({ error: '无法获取该股票的实时价格，请检查股票代码是否正确' });
+    }
     const now = new Date();
     await db.execute(
       'INSERT INTO featured_stocks (symbol, price, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, updated_at = ?',
@@ -283,25 +321,60 @@ app.post('/api/featured-stocks/add', async (req, res) => {
     );
     res.json({ symbol, price, updated_at: now });
   } catch (err) {
+    console.error('Error adding featured stock:', err);
     res.status(500).json({ error: '添加或获取股价失败' });
   }
 });
 
-// Get portfolio summary
+// Get portfolio summary - 实时计算总价值
 app.get('/api/portfolio', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM portfolio ORDER BY updated_at DESC LIMIT 1');
-    if (rows.length > 0) {
-      res.json(rows[0]);
+    const calculatedTotal = await calculateCurrentTotalValue(); // 实时计算总价值
+
+    // 获取基准值（用于计算 gain/loss）
+    let baseValueForGainLoss = 0;
+    const [firstDayPerformance] = await db.execute(
+      'SELECT value FROM performance_history WHERE range_type = ? ORDER BY date ASC LIMIT 1',
+      ['all']
+    );
+    if (firstDayPerformance.length > 0) {
+        baseValueForGainLoss = parseFloat(firstDayPerformance[0].value);
     } else {
-      res.status(404).json({ error: 'Portfolio data not found' });
+        // 如果没有历史数据，可以设置一个默认的初始投资额
+        baseValueForGainLoss = 12310; // 或者其他你认为的初始值
     }
+
+    const gainLoss = calculatedTotal - baseValueForGainLoss;
+    const gainLossPercent = baseValueForGainLoss === 0 ? 0 : (gainLoss / baseValueForGainLoss) * 100;
+
+    // 更新 portfolio 表 (可选，如果 portfolio 表只用于存储当前总览)
+    // 这一步是确保 portfolio 表中的数据是最新的，如果前端直接从这个API获取，可以省略对 portfolio 表的查询
+    const [existingPortfolio] = await db.execute('SELECT id FROM portfolio LIMIT 1');
+    if (existingPortfolio.length === 0) {
+        await db.execute(
+            'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
+            [calculatedTotal, gainLoss, gainLossPercent]
+        );
+    } else {
+        await db.execute(
+            'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
+            [calculatedTotal, gainLoss, gainLossPercent]
+        );
+    }
+
+    res.json({
+      total_value: calculatedTotal,
+      gain_loss: parseFloat(gainLoss.toFixed(2)),
+      gain_loss_percent: parseFloat(gainLossPercent.toFixed(2))
+    });
+
   } catch (error) {
+    console.error('Error in /api/portfolio:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get asset allocation
+// Get asset allocation - 已经从 current_assets 获取，保持不变
 app.get('/api/assets', async (req, res) => {
   try {
     // 查询 current_assets 表
@@ -341,100 +414,129 @@ app.get('/api/assets', async (req, res) => {
       { asset_type: 'Other', value: otherTotal }
     ]);
   } catch (error) {
+    console.error('Error in /api/assets:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Update asset value
+// Update asset value - 修改为更新 current_assets 表
 app.put('/api/assets/:type', async (req, res) => {
-  const { type } = req.params;
-  const { change } = req.body;
-  
+  const { type } = req.params; // 例如 'cash', 'stock'
+  const { change, symbol } = req.body; // change 是金额变化，symbol 用于股票数量变化
+
   try {
-    // Get current asset value
-    const [currentAsset] = await db.execute(
-      'SELECT value FROM assets WHERE asset_type = ?',
-      [type]
-    );
-    
-    if (currentAsset.length === 0) {
-      return res.status(404).json({ error: 'Asset type not found' });
+    if (change === undefined || change === null) {
+      return res.status(400).json({ error: '缺少变化金额 (change)' });
     }
-    
-    const newValue = parseFloat(currentAsset[0].value) + parseFloat(change);
-    
-    if (newValue < 0) {
-      return res.status(400).json({ error: 'Asset value cannot be negative' });
+    const numericChange = parseFloat(change);
+    if (isNaN(numericChange)) {
+        return res.status(400).json({ error: '变化金额 (change) 必须是数字' });
     }
-    
-    // Update asset value
-    await db.execute(
-      'UPDATE assets SET value = ? WHERE asset_type = ?',
-      [newValue, type]
+
+    if (type === 'cash' || type === 'bond' || type === 'other') {
+      // 针对非股票资产（通常只有一条记录）
+      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
+      if (asset.length === 0) {
+        // 如果没有该类型资产记录，则插入新记录
+        if (numericChange < 0) return res.status(400).json({ error: `不能减少不存在的 ${type} 资产` });
+        await db.execute('INSERT INTO current_assets (type, amount) VALUES (?, ?)', [type, numericChange]);
+      } else {
+        // 更新现有记录
+        const newAmount = Number(asset[0].amount) + numericChange;
+        if (newAmount < 0) {
+          return res.status(400).json({ error: `${type} 价值不能为负` });
+        }
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
+      }
+    } else if (type === 'stock') {
+        if (!symbol) {
+            return res.status(400).json({ error: '更新股票需要提供股票代码 (symbol)' });
+        }
+        // 更新股票数量
+        const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', ['stock', symbol]);
+        if (stockAsset.length === 0) {
+            // 如果没有这只股票，则插入
+            if (numericChange < 0) return res.status(400).json({ error: '不能卖空不存在的股票' });
+            await db.execute('INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', ['stock', symbol, numericChange]);
+        } else {
+            const newStockAmount = Number(stockAsset[0].amount) + numericChange;
+            if (newStockAmount < 0) {
+                return res.status(400).json({ error: '股票数量不能为负' });
+            }
+            await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newStockAmount, stockAsset[0].id]);
+        }
+    } else {
+      return res.status(400).json({ error: '不支持的资产类型' });
+    }
+
+    // 重新计算总价值并更新 portfolio 和 performance_history
+    const newTotal = await calculateCurrentTotalValue();
+
+    // 获取基准值
+    let baseValueForGainLoss = 0;
+    const [firstDayPerformance] = await db.execute(
+      'SELECT value FROM performance_history WHERE range_type = ? ORDER BY date ASC LIMIT 1',
+      ['all']
     );
-    
-    // Recalculate total portfolio value
-    const [allAssets] = await db.execute('SELECT SUM(value) as total FROM assets');
-    const newTotal = allAssets[0].total;
-    
-    // Update portfolio total (simplified gain/loss calculation)
-    const gainLoss = newTotal - 12310; // Base value for calculation
-    const gainLossPercent = (gainLoss / 12310) * 100;
-    
-    await db.execute(
-      'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
-      [newTotal, gainLoss, gainLossPercent]
-    );
-    
+    if (firstDayPerformance.length > 0) {
+        baseValueForGainLoss = parseFloat(firstDayPerformance[0].value);
+    } else {
+        baseValueForGainLoss = 12310; // 如果没有历史数据，可以设置一个默认值
+    }
+
+    const gainLoss = newTotal - baseValueForGainLoss;
+    const gainLossPercent = baseValueForGainLoss === 0 ? 0 : (gainLoss / baseValueForGainLoss) * 100;
+
+    // 更新 portfolio 表
+    const [existingPortfolio] = await db.execute('SELECT id FROM portfolio LIMIT 1');
+    if (existingPortfolio.length === 0) {
+        await db.execute(
+            'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
+            [newTotal, gainLoss, gainLossPercent]
+        );
+    } else {
+        await db.execute(
+            'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
+            [newTotal, gainLoss, gainLossPercent]
+        );
+    }
+
     // Add new performance data point for today in the unified dataset
     const today = new Date().toISOString().split('T')[0];
-    
     await db.execute(
       'INSERT INTO performance_history (date, value, range_type) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE value = ?',
       [today, newTotal, 'all', newTotal]
     );
-    
-    res.json({ 
-      success: true, 
-      newValue, 
+
+    res.json({
+      success: true,
+      updatedAssetType: type,
       totalPortfolio: newTotal,
-      gainLoss,
-      gainLossPercent: gainLossPercent.toFixed(2)
+      gainLoss: parseFloat(gainLoss.toFixed(2)),
+      gainLossPercent: parseFloat(gainLossPercent.toFixed(2))
     });
   } catch (error) {
+    console.error('Error updating asset:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// Get performance history (updated to use asset_history)
+// Get performance history - 保持不变
 app.get('/api/performance/:range', async (req, res) => {
   const { range } = req.params;
-  
+
   try {
     // 从 asset_history 表获取数据（包含日期和四个资产列）
     const [allRows] = await db.execute(
       'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date'
     );
-    
+
     if (allRows.length === 0) {
       return res.json([]);
     }
-    
-    // 对每条记录计算四列总和，格式化为 { date, value }
-    const summedData = allRows.map(row => {
-      // 确保数值为数字（处理可能的NULL或非数值）
-      const cash = Number(row.cash_value) || 0;
-      const stock = Number(row.stock_value) || 0;
-      const bond = Number(row.bond_value) || 0;
-      const other = Number(row.other_value) || 0;
-      return {
-        date: row.date,
-        value: Math.round((cash + stock + bond + other) * 100) / 100 // 保留两位小数
-      };
-    });
-    
-    // 根据时间范围筛选数据（逻辑与原逻辑一致）
+
     let resultData = [];
+
     if (range === '7d') {
       // 7天：返回最近7天的数据
       resultData = summedData.slice(-7);
@@ -445,9 +547,10 @@ app.get('/api/performance/:range', async (req, res) => {
       // 6个月：返回全部数据（假设asset_history存储6个月数据）
       resultData = summedData;
     }
-    
+
     res.json(resultData);
   } catch (error) {
+    console.error('Error fetching performance history:', error);
     res.status(500).json({ error: error.message });
   }
 });
@@ -457,9 +560,9 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'FinSight Backend is running (MySQL)' });
 });
 
-// Serve the frontend
+// Serve the frontend (保持不变)
 
-// 获取AAPL股价API
+// 获取AAPL股价API (保持不变)
 const yahooFinance = require('yahoo-finance2').default;
 app.get('/api/stock/aapl', async (req, res) => {
   try {
@@ -467,6 +570,7 @@ app.get('/api/stock/aapl', async (req, res) => {
     const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
     res.json({ price });
   } catch (err) {
+    console.error('Error fetching AAPL stock price:', err);
     res.status(500).json({ error: '获取股价失败' });
   }
 });
@@ -485,6 +589,7 @@ app.listen(PORT, async () => {
 process.on('SIGINT', async () => {
   if (db) {
     await db.end();
+    console.log('🔌 MySQL connection closed.');
   }
   process.exit(0);
 });
