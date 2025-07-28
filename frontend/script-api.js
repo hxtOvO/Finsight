@@ -254,17 +254,29 @@ async function updateChart(range = '7d') {
         plugins: {
           legend: { display: false },
           tooltip: {
-            mode: 'index',
-            intersect: false,
-            backgroundColor: '#fff',
-            titleColor: '#db0011',
-            bodyColor: '#222',
-            borderColor: '#db0011',
-            borderWidth: 1,
-            padding: 12,
-            titleFont: { weight: 'bold', size: 16 },
-            bodyFont: { size: 15 },
-          },
+                      mode: 'nearest', // <--- 将这里改为 'nearest'
+                      intersect: false, // 可以保持为 false，或者改为 true 尝试更精确的点击
+                      backgroundColor: '#fff',
+                      titleColor: '#db0011',
+                      bodyColor: '#222',
+                      borderColor: '#db0011',
+                      borderWidth: 1,
+                      padding: 12,
+                      titleFont: { weight: 'bold', size: 16 },
+                      bodyFont: { size: 15 },
+                      // 添加一个回调函数，用于自定义tooltip标题，确保显示正确日期
+                      callbacks: {
+                        title: function(tooltipItems) {
+                          // tooltipItems[0].label 包含了当前数据点的标签（日期）
+                          return tooltipItems[0].label;
+                        },
+                        label: function(context) {
+                          // context.dataset.label 是数据集的标签 'Portfolio Value'
+                          // context.parsed.y 是当前数据点的Y轴值
+                          return `${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
+                        }
+                      }
+                    },
         },
         scales: {
           x: {
