@@ -354,6 +354,64 @@
           `;
           managePanel.appendChild(stockInputWrapper);
 
+          // 插入债券提示框（仅在Bond选中时显示）
+          const bondInputWrapper = document.createElement('div');
+          bondInputWrapper.id = 'bondInputWrapper';
+          bondInputWrapper.style.width = '100%';
+          bondInputWrapper.style.margin = '18px 0 0 0';
+          bondInputWrapper.style.display = 'none';
+          bondInputWrapper.style.height = '120px';
+          bondInputWrapper.style.display = 'flex';
+          bondInputWrapper.style.justifyContent = 'center';
+          bondInputWrapper.style.alignItems = 'center';
+          bondInputWrapper.style.flexDirection = 'column';
+          bondInputWrapper.style.transform = 'translate(450px, -280px)';
+          bondInputWrapper.innerHTML = `
+            
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#6c757d;letter-spacing:0.5px;text-align:center;line-height:1.4;'>
+              This service is currently under development
+            </div>
+            <div style='font-size:18px;font-weight:500;color:#868e96;text-align:center;line-height:1.4;'>
+              Please check back later for bond trading features
+            </div>
+          `;
+          managePanel.appendChild(bondInputWrapper);
+
+          // 插入其他资产输入框（仅在Other选中时显示）
+          const otherInputWrapper = document.createElement('div');
+          otherInputWrapper.id = 'otherInputWrapper';
+          otherInputWrapper.style.width = '100%';
+          otherInputWrapper.style.margin = '18px 0 0 0';
+          otherInputWrapper.style.display = 'none';
+          otherInputWrapper.style.height = '120px';
+          otherInputWrapper.style.display = 'flex';
+          otherInputWrapper.style.justifyContent = 'center';
+          otherInputWrapper.style.alignItems = 'center';
+          otherInputWrapper.style.flexDirection = 'column';
+          otherInputWrapper.style.transform = 'translate(300px, -280px)';
+          otherInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter the amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
+            </div>
+            <input id="otherAmountInput" type="number" step="0.01" min="0" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Asset description <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <input id="otherDescriptionInput" type="text" placeholder="e.g., Real Estate, Cryptocurrency, Commodity" maxlength="50" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="otherAddBtn" style="padding:12px 20px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s;box-shadow:0 2px 8px rgba(34,197,94,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Add +</button>
+              <button id="otherRemoveBtn" style="padding:12px 20px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s;box-shadow:0 2px 8px rgba(239,68,68,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Remove -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="otherTransactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+          `;
+          managePanel.appendChild(otherInputWrapper);
+
           manageHistoryPanel = document.createElement('div');
           manageHistoryPanel.id = 'manageHistoryPanel';
           manageHistoryPanel.style.width = '33%';
@@ -410,8 +468,12 @@
           function updateInputVisibility(type) {
             const cashWrapper = document.getElementById('cashInputWrapper');
             const stockWrapper = document.getElementById('stockInputWrapper');
+            const bondWrapper = document.getElementById('bondInputWrapper');
+            const otherWrapper = document.getElementById('otherInputWrapper');
             if (cashWrapper) cashWrapper.style.display = (type === 'Cash') ? 'block' : 'none';
             if (stockWrapper) stockWrapper.style.display = (type === 'Stock') ? 'block' : 'none';
+            if (bondWrapper) bondWrapper.style.display = (type === 'Bond') ? 'block' : 'none';
+            if (otherWrapper) otherWrapper.style.display = (type === 'Other') ? 'block' : 'none';
           }
           updateInputVisibility(currentManageType);
           managePanel.querySelectorAll('.manage-btn').forEach(btn => {
