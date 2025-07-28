@@ -319,6 +319,41 @@
           `;
           managePanel.appendChild(cashInputWrapper);
 
+          // 插入股票输入框（仅在Stock选中时显示）
+          const stockInputWrapper = document.createElement('div');
+          stockInputWrapper.id = 'stockInputWrapper';
+          stockInputWrapper.style.width = '100%';
+          stockInputWrapper.style.margin = '18px 0 0 0';
+          stockInputWrapper.style.display = 'none';
+          stockInputWrapper.style.height = '120px';
+          stockInputWrapper.style.display = 'flex';
+          stockInputWrapper.style.justifyContent = 'center';
+          stockInputWrapper.style.alignItems = 'center';
+          stockInputWrapper.style.flexDirection = 'column';
+          stockInputWrapper.style.transform = 'translate(300px, -280px)';
+          stockInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter stock symbol <span style='color:#1a233a;font-weight:500;'>(e.g., AAPL, TSLA)</span>
+            </div>
+            <input id="stockSymbolInput" type="text" placeholder="Stock Symbol" maxlength="10" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter quantity <span style='color:#1a233a;font-weight:500;'>(number of shares)</span>
+            </div>
+            <input id="stockQuantityInput" type="number" step="1" min="0" placeholder="Quantity" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="stockBuyBtn" style="padding:12px 20px;background:#22c55e;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s;box-shadow:0 2px 8px rgba(34,197,94,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Buy +</button>
+              <button id="stockSellBtn" style="padding:12px 20px;background:#ef4444;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s;box-shadow:0 2px 8px rgba(239,68,68,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Sell -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="stockTransactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+          `;
+          managePanel.appendChild(stockInputWrapper);
+
           manageHistoryPanel = document.createElement('div');
           manageHistoryPanel.id = 'manageHistoryPanel';
           manageHistoryPanel.style.width = '33%';
@@ -372,16 +407,18 @@
           let currentManageType = 'Cash';
           updateManageBtnActive(currentManageType);
           // 控制输入框显示逻辑
-          function updateCashInputVisibility(type) {
-            const wrapper = document.getElementById('cashInputWrapper');
-            if (wrapper) wrapper.style.display = (type === 'Cash') ? 'block' : 'none';
+          function updateInputVisibility(type) {
+            const cashWrapper = document.getElementById('cashInputWrapper');
+            const stockWrapper = document.getElementById('stockInputWrapper');
+            if (cashWrapper) cashWrapper.style.display = (type === 'Cash') ? 'block' : 'none';
+            if (stockWrapper) stockWrapper.style.display = (type === 'Stock') ? 'block' : 'none';
           }
-          updateCashInputVisibility(currentManageType);
+          updateInputVisibility(currentManageType);
           managePanel.querySelectorAll('.manage-btn').forEach(btn => {
             btn.addEventListener('click', function() {
               currentManageType = btn.getAttribute('data-type');
               updateManageBtnActive(currentManageType);
-              updateCashInputVisibility(currentManageType);
+              updateInputVisibility(currentManageType);
             });
           });
         }
