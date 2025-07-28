@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const path = require('path'); // 添加 path 模块
 require('dotenv').config();
 
 const app = express();
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('.')); // Serve static files from current directory
+app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Database connection
 const dbConfig = {
@@ -283,9 +285,9 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve the frontend
-app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
-});
+// app.get('/', (req, res) => {
+//   res.sendFile(__dirname + '/../frontend/index.html');
+// });
 
 // Start server
 app.listen(PORT, async () => {
