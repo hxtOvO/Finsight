@@ -258,14 +258,24 @@
         const manageBtn = document.querySelector('.nav-manage');
         const dashboardMain = document.querySelector('.dashboard-main');
         const headerRight = document.querySelector('.header-right');
-        // manage tab 按钮容器
+        // manage tab 按钮容器和右侧panel
         let managePanel = document.getElementById('managePanel');
+        let manageHistoryPanel = document.getElementById('manageHistoryPanel');
         if (!managePanel) {
+          // 外层容器，横向flex
+          const manageWrapper = document.createElement('div');
+          manageWrapper.id = 'manageWrapper';
+          manageWrapper.style.display = 'none';
+          manageWrapper.style.width = '100%';
+          manageWrapper.style.margin = '48px 0 0 0';
+          manageWrapper.style.flexDirection = 'row';
+          manageWrapper.style.alignItems = 'flex-start';
+          manageWrapper.style.justifyContent = 'flex-start';
+          manageWrapper.style.gap = '38px';
+
           managePanel = document.createElement('div');
           managePanel.id = 'managePanel';
-          managePanel.style.display = 'none';
           managePanel.style.width = '170px';
-          managePanel.style.margin = '48px 0 0 0';
           managePanel.style.display = 'flex';
           managePanel.style.flexDirection = 'column';
           managePanel.style.alignItems = 'flex-start';
@@ -277,47 +287,65 @@
             <button class="manage-btn" data-type="Bond">Bond</button>
             <button class="manage-btn" data-type="Other">Other</button>
           `;
-        // 按钮选中样式逻辑
-        function updateManageBtnActive(selectedType) {
-          const btns = managePanel.querySelectorAll('.manage-btn');
-          btns.forEach(btn => {
-            if (btn.getAttribute('data-type') === selectedType) {
-            btn.style.background = '#db0011';
-            btn.style.color = '#fff';
-            btn.style.border = 'none';
-            } else {
-            btn.style.background = '#fff';
-            btn.style.color = '#222';
-            btn.style.border = 'none';
-            }
-            btn.style.padding = '12px 32px';
-            btn.style.borderRadius = '8px';
-            btn.style.fontSize = '20px';
-            btn.style.fontWeight = '600';
-            btn.style.cursor = 'pointer';
-            btn.style.textAlign = 'center';
-            btn.style.width = '100%';
-            btn.style.boxSizing = 'border-box';
-            btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
-            btn.style.transition = 'box-shadow 0.18s, background 0.18s, color 0.18s';
-            btn.onmouseover = function() {
-              btn.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
-            };
-            btn.onmouseout = function() {
+
+          manageHistoryPanel = document.createElement('div');
+          manageHistoryPanel.id = 'manageHistoryPanel';
+          manageHistoryPanel.style.width = '33%';
+          manageHistoryPanel.style.height = '900px'; // 480px*1.7 = 816px
+          manageHistoryPanel.style.background = '#fff';
+          manageHistoryPanel.style.borderRadius = '12px';
+          manageHistoryPanel.style.boxShadow = '0 2px 12px rgba(0,0,0,0.10)';
+          manageHistoryPanel.style.padding = '28px 32px 28px 32px';
+          manageHistoryPanel.style.marginLeft = 'auto';
+          manageHistoryPanel.style.display = 'flex';
+          manageHistoryPanel.style.flexDirection = 'column';
+          manageHistoryPanel.style.alignItems = 'flex-start';
+          manageHistoryPanel.innerHTML = `<div style="font-size:1.5rem;font-weight:700;color:#1a233a;margin-bottom:18px;">Asset Activity History</div><div style="color:#888;font-size:1.1rem;">(此处展示历史交易记录)</div>`;
+
+          manageWrapper.appendChild(managePanel);
+          manageWrapper.appendChild(manageHistoryPanel);
+          document.querySelector('.dashboard-container').appendChild(manageWrapper);
+
+          // 按钮选中样式逻辑
+          function updateManageBtnActive(selectedType) {
+            const btns = managePanel.querySelectorAll('.manage-btn');
+            btns.forEach(btn => {
+              if (btn.getAttribute('data-type') === selectedType) {
+                btn.style.background = '#db0011';
+                btn.style.color = '#fff';
+                btn.style.border = 'none';
+              } else {
+                btn.style.background = '#fff';
+                btn.style.color = '#222';
+                btn.style.border = 'none';
+              }
+              btn.style.padding = '12px 32px';
+              btn.style.borderRadius = '8px';
+              btn.style.fontSize = '20px';
+              btn.style.fontWeight = '600';
+              btn.style.cursor = 'pointer';
+              btn.style.textAlign = 'center';
+              btn.style.width = '100%';
+              btn.style.boxSizing = 'border-box';
               btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
-            };
+              btn.style.transition = 'box-shadow 0.18s, background 0.18s, color 0.18s';
+              btn.onmouseover = function() {
+                btn.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
+              };
+              btn.onmouseout = function() {
+                btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
+              };
+            });
+          }
+          // 默认选中第一个
+          let currentManageType = 'Cash';
+          updateManageBtnActive(currentManageType);
+          managePanel.querySelectorAll('.manage-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              currentManageType = btn.getAttribute('data-type');
+              updateManageBtnActive(currentManageType);
+            });
           });
-        }
-        // 默认选中第一个
-        let currentManageType = 'Cash';
-        updateManageBtnActive(currentManageType);
-        managePanel.querySelectorAll('.manage-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
-            currentManageType = btn.getAttribute('data-type');
-            updateManageBtnActive(currentManageType);
-          });
-        });
-          document.querySelector('.dashboard-container').appendChild(managePanel);
         }
         function setTab(tab) {
           if (tab === 'performance') {
@@ -325,13 +353,15 @@
             manageBtn.classList.remove('active');
             if (dashboardMain) dashboardMain.style.display = '';
             if (headerRight) headerRight.style.display = '';
-            if (managePanel) managePanel.style.display = 'none';
+            const manageWrapper = document.getElementById('manageWrapper');
+            if (manageWrapper) manageWrapper.style.display = 'none';
           } else if (tab === 'manage') {
             perfBtn.classList.remove('active');
             manageBtn.classList.add('active');
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            if (managePanel) managePanel.style.display = 'flex';
+            const manageWrapper = document.getElementById('manageWrapper');
+            if (manageWrapper) manageWrapper.style.display = 'flex';
           }
         }
         perfBtn.addEventListener('click', function() {
