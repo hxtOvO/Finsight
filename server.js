@@ -61,6 +61,17 @@ async function initDatabase() {
 
 // Create necessary tables
 async function createTables() {
+  // 新建 asset_history 表
+  const createAssetHistoryTable = `
+    CREATE TABLE IF NOT EXISTS asset_history (
+      date DATE PRIMARY KEY,
+      cash_value DECIMAL(12,2),
+      stock_value DECIMAL(12,2),
+      bond_value DECIMAL(12,2),
+      other_value DECIMAL(12,2)
+    )
+  `;
+  await db.execute(createAssetHistoryTable);
   const createPortfolioTable = `
     CREATE TABLE IF NOT EXISTS portfolio (
       id INT AUTO_INCREMENT PRIMARY KEY,
@@ -110,10 +121,45 @@ async function createTables() {
 
 // Seed initial data
 async function seedInitialData() {
+  // 检查 asset_history 表是否存在且为空，若为空则生成180天历史数据
+  try {
+    const [hisRows] = await db.execute('SELECT COUNT(*) as count FROM asset_history');
+    if (hisRows[0].count === 0) {
+      // 生成180天历史数据
+      const today = new Date();
+      for (let i = 0; i < 180; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
+        // 生成示例数据（可根据实际需求调整生成逻辑）
+        const cash = 120000 - i * 100;
+        const stock = 41000 + (i % 10) * 1000 + Math.round(Math.random() * 1000);
+        const bond = 20000 + (i % 2) * 15000;
+        const other = 350000 - i * 500 + Math.round(Math.random() * 1000);
+        await db.execute(
+          'INSERT INTO asset_history (date, cash_value, stock_value, bond_value, other_value) VALUES (?, ?, ?, ?, ?)',
+          [dateStr, cash, stock, bond, other]
+        );
+      }
+      console.log('✅ asset_history 180天历史数据已生成');
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
   // Check if data already exists
   const [portfolioRows] = await db.execute('SELECT COUNT(*) as count FROM portfolio');
   const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
-  
+  // 检查 current_assets 表是否存在且为空
+  try {
+    const [curRows] = await db.execute('SELECT COUNT(*) as count FROM current_assets');
+    if (curRows[0].count === 0) {
+      // 自动生成 current_assets 示例数据
+      await db.execute("INSERT INTO current_assets (type, symbol, amount) VALUES ('cash', NULL, 5000), ('stock', 'AAPL', 10), ('stock', 'NVDA', 5), ('bond', NULL, 2000), ('other', NULL, 1000)");
+    }
+  } catch (e) {
+    // 表不存在则跳过
+  }
+  // ...existing code...
   if (portfolioRows[0].count === 0) {
     // Insert initial portfolio data
     await db.execute(
@@ -245,8 +291,42 @@ app.get('/api/portfolio', async (req, res) => {
 // Get asset allocation
 app.get('/api/assets', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT * FROM assets ORDER BY asset_type');
-    res.json(rows);
+    // 查询 current_assets 表
+    const [rows] = await db.execute('SELECT * FROM current_assets');
+
+    // cash
+    const cashTotal = rows.filter(r => r.type === 'cash').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // bond
+    const bondTotal = rows.filter(r => r.type === 'bond').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // other
+    const otherTotal = rows.filter(r => r.type === 'other').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    // stock：每行 amount * symbol 对应股价
+    const stockRows = rows.filter(r => r.type === 'stock');
+    let stockTotal = 0;
+    if (stockRows.length > 0) {
+      const symbols = stockRows.map(r => r.symbol);
+      if (symbols.length > 0) {
+        const placeholders = symbols.map(() => '?').join(',');
+        const [prices] = await db.execute(`SELECT symbol, price FROM featured_stocks WHERE symbol IN (${placeholders})`, symbols);
+        const priceMap = {};
+        prices.forEach(p => { priceMap[p.symbol] = Number(p.price); });
+        stockTotal = stockRows.reduce((sum, r) => {
+          const price = priceMap[r.symbol] || 0;
+          return sum + Number(r.amount) * price;
+        }, 0);
+      }
+    }
+
+    // 返回聚合结果
+    res.json([
+      { asset_type: 'Cash', value: cashTotal },
+      { asset_type: 'Stock', value: stockTotal },
+      { asset_type: 'Bond', value: bondTotal },
+      { asset_type: 'Other', value: otherTotal }
+    ]);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

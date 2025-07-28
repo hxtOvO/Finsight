@@ -71,13 +71,7 @@ async function fetchAssetData() {
     return await response.json();
   } catch (error) {
     console.error('Error fetching asset data:', error);
-    // Fallback to mock data
-    return [
-      { asset_type: 'Cash', value: 3000 },
-      { asset_type: 'Stock', value: 5500 },
-      { asset_type: 'Bond', value: 3200 },
-      { asset_type: 'Other', value: 840 }
-    ];
+    return [];
   }
 }
 
