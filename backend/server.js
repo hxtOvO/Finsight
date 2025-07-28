@@ -406,32 +406,44 @@ app.put('/api/assets/:type', async (req, res) => {
   }
 });
 
-// Get performance history
+// Get performance history (updated to use asset_history)
 app.get('/api/performance/:range', async (req, res) => {
   const { range } = req.params;
   
   try {
-    // 获取完整的180天数据
+    // 从 asset_history 表获取数据（包含日期和四个资产列）
     const [allRows] = await db.execute(
-      'SELECT date, value FROM performance_history WHERE range_type = ? ORDER BY date',
-      ['all']
+      'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date'
     );
     
     if (allRows.length === 0) {
       return res.json([]);
     }
     
-    let resultData = [];
+    // 对每条记录计算四列总和，格式化为 { date, value }
+    const summedData = allRows.map(row => {
+      // 确保数值为数字（处理可能的NULL或非数值）
+      const cash = Number(row.cash_value) || 0;
+      const stock = Number(row.stock_value) || 0;
+      const bond = Number(row.bond_value) || 0;
+      const other = Number(row.other_value) || 0;
+      return {
+        date: row.date,
+        value: Math.round((cash + stock + bond + other) * 100) / 100 // 保留两位小数
+      };
+    });
     
+    // 根据时间范围筛选数据（逻辑与原逻辑一致）
+    let resultData = [];
     if (range === '7d') {
       // 7天：返回最近7天的数据
-      resultData = allRows.slice(-7);
+      resultData = summedData.slice(-7);
     } else if (range === '1m') {
-      // 1个月：返回最近30天的完整数据
-      resultData = allRows.slice(-30);
+      // 1个月：返回最近30天的数据
+      resultData = summedData.slice(-30);
     } else if (range === '6m') {
-      // 6个月：返回完整180天数据
-      resultData = allRows;
+      // 6个月：返回全部数据（假设asset_history存储6个月数据）
+      resultData = summedData;
     }
     
     res.json(resultData);
