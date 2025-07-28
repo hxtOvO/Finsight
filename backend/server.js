@@ -104,9 +104,6 @@ async function createTables() {
     )
   `;
 
-  await db.execute(createPortfolioTable);
-  await db.execute(createAssetsTable);
-  await db.execute(createPerformanceTable);
   // 新建 featured_stocks 表
   const createFeaturedStocksTable = `
     CREATE TABLE IF NOT EXISTS featured_stocks (
@@ -116,7 +113,21 @@ async function createTables() {
       updated_at DATETIME
     )
   `;
+
+  const createCurrentAssetsTable = `
+    CREATE TABLE IF NOT EXISTS current_assets (
+      id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
+      type varchar(20) DEFAULT NULL,
+      symbol varchar(20) DEFAULT NULL,
+      amount decimal(18,2) DEFAULT NULL
+    )
+  `;
+
+  await db.execute(createPortfolioTable);
+  await db.execute(createAssetsTable);
+  await db.execute(createPerformanceTable);
   await db.execute(createFeaturedStocksTable);
+  await db.execute(createCurrentAssetsTable);
   
   console.log('✅ Database tables created successfully');
 }
