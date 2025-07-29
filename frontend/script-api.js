@@ -632,9 +632,10 @@ async function updateSelectedAssetChart(range = '7d') {
     if (!selectedAssetChart) {
         const ctx = document.getElementById('selectedAssetChart').getContext('2d');
         const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-        gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
-        gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
-        gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+        // 修改颜色停止点为新的颜色
+        gradient.addColorStop(0, 'rgba(252, 125, 51, 0.9)'); 
+        gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
+        gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
 
         selectedAssetChart = new Chart(ctx, {
             type: 'line',
@@ -643,12 +644,12 @@ async function updateSelectedAssetChart(range = '7d') {
                 datasets: [{
                     label: 'Selected Asset Value',
                     data: values,
-                    borderColor: '#db0011',
+                    borderColor: '#ff701dff',
                     backgroundColor: gradient,
                     pointRadius: 0,
                     pointHoverRadius: 6,
                     pointBackgroundColor: '#fff',
-                    pointBorderColor: '#db0011',
+                    pointBorderColor: '#ff701dff',
                     borderWidth: 2,
                     fill: true,
                     tension: 0.38
@@ -668,9 +669,9 @@ async function updateSelectedAssetChart(range = '7d') {
                         mode: 'nearest',
                         intersect: false,
                         backgroundColor: '#fff',
-                        titleColor: '#db0011',
+                        titleColor: '#ff701dff',
                         bodyColor: '#222',
-                        borderColor: '#db0011',
+                        borderColor: '#ff701dff',
                         borderWidth: 1,
                         padding: 12,
                         titleFont: { weight: 'bold', size: 16 },
@@ -697,6 +698,7 @@ async function updateSelectedAssetChart(range = '7d') {
 async function fetchSelectedAssetPerformanceData(assetType, range) {
   try {
     let assetType = 'stock';
+    let range = '1m';
     console.log(`🌐 API请求 ${assetType} 资产 ${range} 数据...`);
     const response = await fetch(`api/assets/${assetType}/performance/${range}`);
     if (!response.ok) throw new Error('Failed to fetch selected asset performance data');
@@ -725,9 +727,10 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
   if (!selectedAssetChart) {
     const ctx = document.getElementById('selectedAssetChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-    gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
-    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
-    gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+    // 修改颜色停止点为新的颜色
+    gradient.addColorStop(0, 'rgba(252, 125, 51, 0.32)'); 
+    gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
+    gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
 
     selectedAssetChart = new Chart(ctx, {
       type: 'line',
@@ -736,12 +739,12 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
         datasets: [{
           label: `${assetType} Asset Value`,
           data: values,
-          borderColor: '#db0011',
+          borderColor: '#ff701dff',
           backgroundColor: gradient,
           pointRadius: 0,
           pointHoverRadius: 6,
           pointBackgroundColor: '#fff',
-          pointBorderColor: '#db0011',
+          pointBorderColor: '#ff701dff',
           borderWidth: 2,
           fill: true,
           tension: 0.38
@@ -761,9 +764,9 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
             mode: 'nearest',
             intersect: false,
             backgroundColor: '#fff',
-            titleColor: '#db0011',
+            titleColor: '#ff701dff',
             bodyColor: '#222',
-            borderColor: '#db0011',
+            borderColor: '#ff701dff',
             borderWidth: 1,
             padding: 12,
             titleFont: { weight: 'bold', size: 16 },
