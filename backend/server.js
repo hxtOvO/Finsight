@@ -42,15 +42,15 @@ async function initDatabase() {
       password: dbConfig.password,
       port: dbConfig.port
     });
-    
+
     // Create database if it doesn't exist
     await connectionWithoutDB.execute(`CREATE DATABASE IF NOT EXISTS ${dbConfig.database}`);
     await connectionWithoutDB.end();
-    
+
     // Now connect to the database
     db = await mysql.createConnection(dbConfig);
     console.log('✅ Connected to MySQL database');
-    
+
     // Create tables if they don't exist
     await createTables();
     await seedInitialData();
@@ -106,14 +106,23 @@ async function createTables() {
   `;
 
   // 新建 featured_stocks 表
+  // const createFeaturedStocksTable = `
+  //   CREATE TABLE IF NOT EXISTS featured_stocks (
+  //     id INT AUTO_INCREMENT PRIMARY KEY,
+  //     symbol VARCHAR(16) UNIQUE,
+  //     price DECIMAL(12,4),
+  //     updated_at DATETIME
+  //   )
+  // `;
   const createFeaturedStocksTable = `
-    CREATE TABLE IF NOT EXISTS featured_stocks (
-      id INT AUTO_INCREMENT PRIMARY KEY,
-      symbol VARCHAR(16) UNIQUE,
-      price DECIMAL(12,4),
-      updated_at DATETIME
-    )
-  `;
+  CREATE TABLE IF NOT EXISTS featured_stocks (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    symbol VARCHAR(16) UNIQUE,  -- 股票代码（唯一，避免重复添加）
+    price DECIMAL(12,4),        -- 股票价格（保留4位小数）
+    change_percent DECIMAL(5,2), -- 增减率（保留2位小数，范围支持 -999.99% 到 999.99%）
+    updated_at DATETIME         -- 数据更新时间
+  )
+`;
 
   const createCurrentAssetsTable = `
     CREATE TABLE IF NOT EXISTS current_assets (
@@ -233,7 +242,7 @@ async function seedInitialData() {
     const baseValue = 10000; // 180天前的起始值，可以根据需要调整
     const portfolioTotal = initialTotalValue; // 使用计算出的今天总价值
     // 确保 baseValue 不为 0，避免除以 0
-    const dailyGrowthRate = baseValue === 0 ? 0 : (Math.pow(portfolioTotal / baseValue, 1/179) - 1);
+    const dailyGrowthRate = baseValue === 0 ? 0 : (Math.pow(portfolioTotal / baseValue, 1 / 179) - 1);
 
     console.log('📊 生成180天完整历史数据...');
 
@@ -278,53 +287,202 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
   }
 });
 // 获取 featured 栏目股票列表
+// app.get('/api/featured-stocks', async (req, res) => {
+//   try {
+//     const [rows] = await db.execute('SELECT symbol, price, updated_at FROM featured_stocks ORDER BY updated_at DESC');
+//     // 获取每只股票的涨跌幅（change百分比）
+//     const yahooFinance = require('yahoo-finance2').default;
+//     const result = await Promise.all(rows.map(async row => {
+//       try {
+//         const quote = await yahooFinance.quote(row.symbol);
+//         let change = null;
+//         if (quote && typeof quote.regularMarketChangePercent === 'number') {
+//           change = quote.regularMarketChangePercent;
+//         }
+//         return { ...row, change };
+//       } catch (err) {
+//           console.error(`Error fetching quote for ${row.symbol}:`, err.message);
+//         return { ...row, change: null };
+//       }
+//     }));
+//     res.json(result);
+//   } catch (err) {
+//     console.error('Error fetching featured stocks:', err);
+//     res.status(500).json({ error: '获取栏目股票列表失败' });
+//   }
+// });
+
+// // 添加新 featured 栏目股票
+// app.post('/api/featured-stocks/add', async (req, res) => {
+//   const { symbol } = req.body;
+//   if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
+//   try {
+//     const yahooFinance = require('yahoo-finance2').default;
+//     const quote = await yahooFinance.quote(symbol);
+//     const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+//     if (price === null) {
+//         return res.status(400).json({ error: '无法获取该股票的实时价格，请检查股票代码是否正确' });
+//     }
+//     const now = new Date();
+//     await db.execute(
+//       'INSERT INTO featured_stocks (symbol, price, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, updated_at = ?',
+//       [symbol, price, now, price, now]
+//     );
+//     res.json({ symbol, price, updated_at: now });
+//   } catch (err) {
+//     console.error('Error adding featured stock:', err);
+//     res.status(500).json({ error: '添加或获取股价失败' });
+//   }
+// });
+
+const axios = require('axios');
+
+// 配置信息
+const RAPIDAPI_KEY = '3fe2c207edmsh440ab78d11c496bp17df73jsna7db33651503';
+const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
+
+// 1. 获取featured栏目股票列表（查）
 app.get('/api/featured-stocks', async (req, res) => {
   try {
-    const [rows] = await db.execute('SELECT symbol, price, updated_at FROM featured_stocks ORDER BY updated_at DESC');
-    // 获取每只股票的涨跌幅（change百分比）
-    const yahooFinance = require('yahoo-finance2').default;
-    const result = await Promise.all(rows.map(async row => {
-      try {
-        const quote = await yahooFinance.quote(row.symbol);
-        let change = null;
-        if (quote && typeof quote.regularMarketChangePercent === 'number') {
-          change = quote.regularMarketChangePercent;
-        }
-        return { ...row, change };
-      } catch (err) {
-          console.error(`Error fetching quote for ${row.symbol}:`, err.message);
-        return { ...row, change: null };
-      }
-    }));
+    const [rows] = await db.execute(
+      'SELECT symbol, price, change_percent, updated_at FROM featured_stocks ORDER BY updated_at DESC'
+    );
+
+    const result = rows.map(row => {
+      // 1. 转换为数字
+      const num = Number(row.change_percent);
+      // 2. 只保留两位小数的数字（不转为字符串）
+      const change = !isNaN(num) ? Math.round(num * 100) / 100 : null;
+
+      return {
+        symbol: row.symbol,
+        price: row.price,
+        change: change, // 此时是数字类型（如 0.54 而非 "0.54"）
+        updated_at: row.updated_at
+      };
+    });
+
     res.json(result);
   } catch (err) {
-    console.error('Error fetching featured stocks:', err);
+    console.error('获取列表失败:', err);
     res.status(500).json({ error: '获取栏目股票列表失败' });
   }
 });
 
-// 添加新 featured 栏目股票
+// 2. 添加新featured栏目股票（增）
+// 
 app.post('/api/featured-stocks/add', async (req, res) => {
   const { symbol } = req.body;
-  if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
+  if (!symbol) {
+    console.warn('缺少股票代码，请求体:', req.body);
+    return res.status(400).json({ error: '缺少股票代码' });
+  }
+
+  const normalizedSymbol = symbol.trim().toUpperCase();
   try {
-    const yahooFinance = require('yahoo-finance2').default;
-    const quote = await yahooFinance.quote(symbol);
-    const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
-    if (price === null) {
-        return res.status(400).json({ error: '无法获取该股票的实时价格，请检查股票代码是否正确' });
+    // 1. 定义两个接口的URL
+    const QUOTES_API_URL = 'https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/quotes'; // 拿增减率
+    const PRICE_API_URL = 'https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules'; // 拿价格
+
+    // 2. 通用请求头
+    const headers = {
+      'x-rapidapi-host': RAPIDAPI_HOST,
+      'x-rapidapi-key': RAPIDAPI_KEY
+    };
+
+    // 3. 并行调用两个接口（提高效率）
+    // console.log(`同时获取 ${normalizedSymbol} 的价格和增减率...`);
+    const [priceResponse, quotesResponse] = await Promise.all([
+      // 调用modules接口获取价格（带financial-data模块）
+      axios.get(PRICE_API_URL, {
+        params: { ticker: normalizedSymbol, module: 'financial-data' },
+        headers
+      }),
+      // 调用quotes接口获取增减率
+      axios.get(QUOTES_API_URL, {
+        params: { ticker: normalizedSymbol },
+        headers
+      })
+    ]);
+
+    // 4. 解析价格（从modules接口的financialData中提取）
+    // 修复：将response改为priceResponse（正确引用价格接口的响应）
+    const financialData = priceResponse.data.body;
+    // console.log(`financialData:`, priceResponse.data.body);
+    if (!financialData) {
+      console.error(`接口未返回 financialData 字段，响应数据:`, priceResponse.data);
+      return res.status(400).json({ error: '未找到股票财务数据' });
     }
+
+    // 提取当前价格（raw 字段为数值型价格）
+    const currentPrice = financialData.currentPrice;
+    if (!currentPrice || currentPrice.raw === undefined || currentPrice.raw === null) {
+      console.error(`当前价格字段缺失，currentPrice 数据:`, currentPrice);
+      return res.status(400).json({ error: '无法获取股票当前价格' });
+    }
+    // 修复：定义price变量并赋值
+    const price = currentPrice.raw;
+
+    // 5. 解析增减率（从quotes接口的quotes数组中提取）
+    const quotes = quotesResponse.data.body;
+    // console.log(`quotesResponse-------------:`, quotes);
+
+    if (!quotes || !quotes[0]) {
+      console.error(`${normalizedSymbol} 报价数据缺失（quotes）:`, quotesResponse.data);
+      return res.status(400).json({ error: '无法获取股票增减率数据' });
+    }
+    const regularMarketChangePercent = quotes[0].regularMarketChangePercent;
+    let change = null;
+    if (typeof regularMarketChangePercent === 'number') {
+      change = regularMarketChangePercent.toFixed(2); // 保留两位小数
+    } else {
+      console.warn(`${normalizedSymbol} 增减率格式异常:`, regularMarketChangePercent);
+    }
+
+    // 6. 存入数据库
     const now = new Date();
+    // 格式化日期为MySQL兼容格式（避免数据包错误）
+    const mysqlDateTime = now.toISOString().slice(0, 19).replace('T', ' ');
     await db.execute(
-      'INSERT INTO featured_stocks (symbol, price, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, updated_at = ?',
-      [symbol, price, now, price, now]
+      // 新增change_percent字段的插入和更新逻辑
+      'INSERT INTO featured_stocks (symbol, price, change_percent, updated_at) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, change_percent = ?, updated_at = ?',
+      [normalizedSymbol, price, change, now, price, change, now]
     );
-    res.json({ symbol, price, updated_at: now });
+
+
+    // 7. 返回结果
+    // 6. 返回结果（前端展示时格式化）
+    res.json({
+      symbol: normalizedSymbol,
+      price,
+      change: typeof change === 'number' ? change.toFixed(2) : null,
+      updated_at: now.toISOString(),
+      message: '添加股票成功'
+    });
+
   } catch (err) {
-    console.error('Error adding featured stock:', err);
-    res.status(500).json({ error: '添加或获取股价失败' });
+    console.error(`处理 ${normalizedSymbol} 失败:`, {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
+      stack: err.stack // 增加堆栈信息，便于定位错误
+    });
+
+    // 错误分类处理
+    if (err.response?.status === 429) {
+      return res.status(429).json({ error: '请求过于频繁，请稍后再试' });
+    } else if (err.response?.status === 404) {
+      return res.status(404).json({ error: '股票代码不存在' });
+    } else if (err.code === 'ECONNABORTED') {
+      return res.status(504).json({ error: '接口请求超时' });
+    } else {
+      return res.status(500).json({ error: '添加股票失败，请检查接口配置' });
+    }
   }
 });
+
+
+
 
 // Get portfolio summary - 实时计算总价值
 app.get('/api/portfolio', async (req, res) => {
@@ -338,10 +496,10 @@ app.get('/api/portfolio', async (req, res) => {
       ['all']
     );
     if (firstDayPerformance.length > 0) {
-        baseValueForGainLoss = parseFloat(firstDayPerformance[0].value);
+      baseValueForGainLoss = parseFloat(firstDayPerformance[0].value);
     } else {
-        // 如果没有历史数据，可以设置一个默认的初始投资额
-        baseValueForGainLoss = 12310; // 或者其他你认为的初始值
+      // 如果没有历史数据，可以设置一个默认的初始投资额
+      baseValueForGainLoss = 12310; // 或者其他你认为的初始值
     }
 
     const gainLoss = calculatedTotal - baseValueForGainLoss;
@@ -351,15 +509,15 @@ app.get('/api/portfolio', async (req, res) => {
     // 这一步是确保 portfolio 表中的数据是最新的，如果前端直接从这个API获取，可以省略对 portfolio 表的查询
     const [existingPortfolio] = await db.execute('SELECT id FROM portfolio LIMIT 1');
     if (existingPortfolio.length === 0) {
-        await db.execute(
-            'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
-            [calculatedTotal, gainLoss, gainLossPercent]
-        );
+      await db.execute(
+        'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
+        [calculatedTotal, gainLoss, gainLossPercent]
+      );
     } else {
-        await db.execute(
-            'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
-            [calculatedTotal, gainLoss, gainLossPercent]
-        );
+      await db.execute(
+        'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
+        [calculatedTotal, gainLoss, gainLossPercent]
+      );
     }
 
     res.json({
@@ -430,7 +588,7 @@ app.put('/api/assets/:type', async (req, res) => {
     }
     const numericChange = parseFloat(change);
     if (isNaN(numericChange)) {
-        return res.status(400).json({ error: '变化金额 (change) 必须是数字' });
+      return res.status(400).json({ error: '变化金额 (change) 必须是数字' });
     }
 
     if (type === 'cash' || type === 'bond' || type === 'other') {
@@ -449,22 +607,22 @@ app.put('/api/assets/:type', async (req, res) => {
         await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
       }
     } else if (type === 'stock') {
-        if (!symbol) {
-            return res.status(400).json({ error: '更新股票需要提供股票代码 (symbol)' });
+      if (!symbol) {
+        return res.status(400).json({ error: '更新股票需要提供股票代码 (symbol)' });
+      }
+      // 更新股票数量
+      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', ['stock', symbol]);
+      if (stockAsset.length === 0) {
+        // 如果没有这只股票，则插入
+        if (numericChange < 0) return res.status(400).json({ error: '不能卖空不存在的股票' });
+        await db.execute('INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', ['stock', symbol, numericChange]);
+      } else {
+        const newStockAmount = Number(stockAsset[0].amount) + numericChange;
+        if (newStockAmount < 0) {
+          return res.status(400).json({ error: '股票数量不能为负' });
         }
-        // 更新股票数量
-        const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', ['stock', symbol]);
-        if (stockAsset.length === 0) {
-            // 如果没有这只股票，则插入
-            if (numericChange < 0) return res.status(400).json({ error: '不能卖空不存在的股票' });
-            await db.execute('INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', ['stock', symbol, numericChange]);
-        } else {
-            const newStockAmount = Number(stockAsset[0].amount) + numericChange;
-            if (newStockAmount < 0) {
-                return res.status(400).json({ error: '股票数量不能为负' });
-            }
-            await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newStockAmount, stockAsset[0].id]);
-        }
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newStockAmount, stockAsset[0].id]);
+      }
     } else {
       return res.status(400).json({ error: '不支持的资产类型' });
     }
@@ -479,9 +637,9 @@ app.put('/api/assets/:type', async (req, res) => {
       ['all']
     );
     if (firstDayPerformance.length > 0) {
-        baseValueForGainLoss = parseFloat(firstDayPerformance[0].value);
+      baseValueForGainLoss = parseFloat(firstDayPerformance[0].value);
     } else {
-        baseValueForGainLoss = 12310; // 如果没有历史数据，可以设置一个默认值
+      baseValueForGainLoss = 12310; // 如果没有历史数据，可以设置一个默认值
     }
 
     const gainLoss = newTotal - baseValueForGainLoss;
@@ -490,15 +648,15 @@ app.put('/api/assets/:type', async (req, res) => {
     // 更新 portfolio 表
     const [existingPortfolio] = await db.execute('SELECT id FROM portfolio LIMIT 1');
     if (existingPortfolio.length === 0) {
-        await db.execute(
-            'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
-            [newTotal, gainLoss, gainLossPercent]
-        );
+      await db.execute(
+        'INSERT INTO portfolio (total_value, gain_loss, gain_loss_percent) VALUES (?, ?, ?)',
+        [newTotal, gainLoss, gainLossPercent]
+      );
     } else {
-        await db.execute(
-            'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
-            [newTotal, gainLoss, gainLossPercent]
-        );
+      await db.execute(
+        'UPDATE portfolio SET total_value = ?, gain_loss = ?, gain_loss_percent = ? WHERE id = 1',
+        [newTotal, gainLoss, gainLossPercent]
+      );
     }
 
     // Add new performance data point for today in the unified dataset
@@ -524,17 +682,17 @@ app.put('/api/assets/:type', async (req, res) => {
 // Get performance history (updated to use asset_history)
 app.get('/api/performance/:range', async (req, res) => {
   const { range } = req.params;
-  
+
   try {
     // 从 asset_history 表获取数据（包含日期和四个资产列）
     const [allRows] = await db.execute(
       'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date'
     );
-    
+
     if (allRows.length === 0) {
       return res.json([]);
     }
-    
+
     // 对每条记录计算四列总和，格式化为 { date, value }
     const summedData = allRows.map(row => {
       // 确保数值为数字（处理可能的NULL或非数值）
@@ -547,7 +705,7 @@ app.get('/api/performance/:range', async (req, res) => {
         value: Math.round((cash + stock + bond + other) * 100) / 100 // 保留两位小数
       };
     });
-    
+
     // 根据时间范围筛选数据（逻辑与原逻辑一致）
     let resultData = [];
     if (range === '7d') {
@@ -560,7 +718,7 @@ app.get('/api/performance/:range', async (req, res) => {
       // 6个月：返回全部数据（假设asset_history存储6个月数据）
       resultData = summedData;
     }
-    
+
     res.json(resultData);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -576,17 +734,17 @@ app.get('/api/health', (req, res) => {
 // Serve the frontend (保持不变)
 
 // 获取AAPL股价API (保持不变)
-const yahooFinance = require('yahoo-finance2').default;
-app.get('/api/stock/aapl', async (req, res) => {
-  try {
-    const quote = await yahooFinance.quote('AAPL');
-    const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
-    res.json({ price });
-  } catch (err) {
-    console.error('Error fetching AAPL stock price:', err);
-    res.status(500).json({ error: '获取股价失败' });
-  }
-});
+// const yahooFinance = require('yahoo-finance2').default;
+// app.get('/api/stock/aapl', async (req, res) => {
+//   try {
+//     const quote = await yahooFinance.quote('AAPL');
+//     const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
+//     res.json({ price });
+//   } catch (err) {
+//     console.error('Error fetching AAPL stock price:', err);
+//     res.status(500).json({ error: '获取股价失败' });
+//   }
+// });
 
 // app.get('/', (req, res) => {
 //   res.sendFile(__dirname + '/index.html');
