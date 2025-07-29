@@ -7,21 +7,12 @@
   letter-spacing: 1.2px;
 }
 /* Navigation buttons vertical layout and theme */
-/* .dashboard-main {
+.dashboard-main {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
   gap: 32px;
-} */
-.dashboard-main {
-  width: 100%;
-  min-height: 320px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 48px; /* 增加间距 */
 }
-
 .dashboard-nav {
   display: flex;
   flex-direction: column;
@@ -44,33 +35,6 @@
   transition: background 0.2s, color 0.2s;
   border: 1px solid #eee;
 }
-
-.nav-btn {
-  background: #fff;
-  color: #222;
-  border: none;
-  border-radius: 8px;
-  padding: 14px 0;
-  width: 180px;
-  font-size: 1.12rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  box-shadow: 0 2px 8px rgba(219, 0, 17, 0.08);
-  cursor: pointer;
-  transition: background 0.2s, color 0.2s, transform 0.2s; /* 添加 transform 过渡效果 */
-  border: 1px solid #eee;
-}
-
-.nav-btn:hover {
-  background: #f5f5f5; /* 悬停时背景颜色变浅 */
-  transform: scale(1.05); /* 悬停时按钮放大 */
-}
-
-.nav-btn.active {
-  background: #db0011;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(219, 0, 17, 0.18);
-}
 .nav-btn.active {
   background: #db0011;
   color: #fff;
@@ -84,8 +48,8 @@
   min-height: 320px;
 }
 #portfolioChart {
-  width: 320px !important;
-  /* max-width: 600px; */
+  width: 100% !important;
+  max-width: 600px;
   height: 320px !important;
 }
 #allocationChart {
@@ -210,56 +174,3 @@
   }
 }
 
-/* 在 style.css 中添加或修改 */
-body {
-  background-color: #f9f9f9; /* 浅灰色背景 */
-}
-
-.dashboard-container {
-  background-color: #ffffff; /* 白色容器背景 */
-  border: 1px solid #e0e0e0; /* 浅灰色边框 */
-}
-
-.nav-btn {
-  border: 1px solid #e0e0e0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.nav-btn.active {
-  background-color: #db0011;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(219, 0, 17, 0.2);
-}
-
-@media (max-width: 600px) {
-  .dashboard-container {
-    padding: 16px;
-  }
-
-  .dashboard-header {
-    flex-direction: column;
-    align-items: center;
-    gap: 16px;
-  }
-
-  .header-right {
-    align-items: center;
-  }
-}
-
-/* 在 style.css 中修改 */
-.app-name {
-  font-size: 3rem; /* 增大标题字体大小 */
-  font-weight: 900;
-  letter-spacing: 1.5px;
-}
-
-.portfolio-value {
-  font-size: 1.2rem;
-  font-weight: 600;
-}
-
-.portfolio-gain {
-  font-size: 1.1rem;
-  font-weight: 500;
-}
