@@ -377,8 +377,7 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 const axios = require('axios');
 
 // 配置信息
-const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
-const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
+const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd'; // 替换为你的实际API密钥
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 //获取featured栏目股票列表（查）
