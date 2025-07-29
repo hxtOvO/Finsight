@@ -1045,17 +1045,56 @@
                   </div>
                 </div>
                 
-                <!-- 右侧 3/10 区域：推荐买卖建议 (高度1.5倍) -->
-                <div style="flex:3; height:780px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
-                  <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
-                    💡 <span>Trading Recommendations</span>
-                  </h3>
-                  <div id="tradingRecommendations" style="height:700px; overflow-y:auto; padding-right:8px;">
-                    <div id="recommendationsData" style="display:flex; flex-direction:column; gap:16px;">
-                      <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
-                        <div style="margin-bottom:12px;">🤖</div>
-                        Loading recommendations...
+                <!-- 右侧 3/10 区域：推荐买卖建议和金融助手 -->
+                <div style="flex:3; height:780px; display:flex; flex-direction:column; gap:20px;">
+                  <!-- 上半部分：推荐买卖建议 -->
+                  <div style="height:350px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
+                    <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
+                      💡 <span>Trading Recommendations</span>
+                    </h3>
+                    <div id="tradingRecommendations" style="height:270px; overflow-y:auto; padding-right:8px;">
+                      <div id="recommendationsData" style="display:flex; flex-direction:column; gap:16px;">
+                        <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
+                          <div style="margin-bottom:12px;">🤖</div>
+                          Loading recommendations...
+                        </div>
                       </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 下半部分：金融助手聊天 -->
+                  <div style="height:390px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb; display:flex; flex-direction:column;">
+                    <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
+                      🧠 <span>Financial Assistant</span>
+                    </h3>
+                    
+                    <!-- 聊天消息区域 -->
+                    <div id="chatMessages" style="flex:1; overflow-y:auto; border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f8fafc; margin-bottom:16px; font-size:14px; line-height:1.5;">
+                      <div style="text-align:center; padding:20px; color:#9ca3af;">
+                        <div style="margin-bottom:8px;">💬</div>
+                        <div>Ask me anything about your portfolio or market trends!</div>
+                        <button onclick="getMarketAnalysis()" 
+                          style="margin-top:12px; padding:8px 16px; background:#10b981; color:white; border:none; border-radius:8px; font-size:13px; cursor:pointer; transition:background 0.2s;"
+                          onmouseover="this.style.background='#059669'"
+                          onmouseout="this.style.background='#10b981'">
+                          📊 Get Market Analysis
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <!-- 输入区域 -->
+                    <div style="display:flex; gap:12px; align-items:flex-end;">
+                      <textarea id="chatInput" placeholder="Ask about your portfolio, market trends, or get investment advice..." 
+                        style="flex:1; padding:12px 16px; border:2px solid #e5e7eb; border-radius:12px; resize:none; font-size:14px; font-family:inherit; line-height:1.4; min-height:44px; max-height:80px; transition:border-color 0.2s; outline:none;"
+                        onkeydown="handleChatKeydown(event)"
+                        onfocus="this.style.borderColor='#3b82f6'"
+                        onblur="this.style.borderColor='#e5e7eb'"></textarea>
+                      <button id="sendChatBtn" onclick="sendChatMessage()" 
+                        style="padding:12px 20px; background:#3b82f6; color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer; transition:background 0.2s; white-space:nowrap; height:44px;"
+                        onmouseover="this.style.background='#2563eb'"
+                        onmouseout="this.style.background='#3b82f6'">
+                        Send
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1820,6 +1859,215 @@
           }
         }
       ];
+    }
+
+    // 聊天功能
+    function handleChatKeydown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendChatMessage();
+      }
+    }
+
+    function addChatMessage(content, isUser = false) {
+      const chatMessages = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.style.cssText = `
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.4;
+        ${isUser ? 
+          'background: #3b82f6; color: white; margin-left: auto; text-align: right;' : 
+          'background: white; color: #374151; border: 1px solid #e5e7eb; margin-right: auto;'
+        }
+      `;
+      
+      if (!isUser) {
+        // AI assistant message with icon
+        messageDiv.innerHTML = `
+          <div style="display: flex; align-items: flex-start; gap: 8px;">
+            <div style="font-size: 16px; margin-top: 2px;">🧠</div>
+            <div style="flex: 1;">${content}</div>
+          </div>
+        `;
+      } else {
+        // User message
+        messageDiv.textContent = content;
+      }
+      
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+      const chatInput = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('sendChatBtn');
+      const message = chatInput.value.trim();
+      
+      if (!message) return;
+      
+      // Disable input and button
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending...';
+      
+      // Add user message
+      addChatMessage(message, true);
+      chatInput.value = '';
+      
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          addChatMessage(data.response);
+        } else {
+          addChatMessage('抱歉，我现在无法处理您的请求。请稍后再试。');
+        }
+      } catch (error) {
+        console.error('Chat error:', error);
+        addChatMessage('连接出现问题，请检查网络连接或稍后再试。');
+      } finally {
+        // Re-enable input and button
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send';
+        chatInput.focus();
+      }
+    }
+
+    // 获取市场分析的函数
+    async function getMarketAnalysis() {
+      const chatMessages = document.getElementById('chatMessages');
+      
+      // 添加加载消息
+      addChatMessage('正在获取市场分析...', true);
+      
+      try {
+        const response = await fetch('/api/market-analysis', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          // 添加市场数据摘要
+          let marketSummary = '📊 **实时市场数据**\n\n';
+          
+          if (data.marketData.marketIndices && data.marketData.marketIndices.length > 0) {
+            marketSummary += '**主要指数:**\n';
+            data.marketData.marketIndices.forEach(index => {
+              const trend = index.changePercent >= 0 ? '📈' : '📉';
+              marketSummary += `- ${index.symbol}: $${index.price?.toFixed(2) || 'N/A'} ${trend} ${index.changePercent?.toFixed(2) || 'N/A'}%\n`;
+            });
+            marketSummary += '\n';
+          }
+          
+          if (data.marketData.popularStocks && data.marketData.popularStocks.length > 0) {
+            marketSummary += '**热门股票:**\n';
+            data.marketData.popularStocks.slice(0, 5).forEach(stock => {
+              const trend = stock.changePercent >= 0 ? '📈' : '📉';
+              marketSummary += `- ${stock.symbol}: $${stock.price?.toFixed(2) || 'N/A'} ${trend} ${stock.changePercent?.toFixed(2) || 'N/A'}%\n`;
+            });
+            marketSummary += '\n';
+          }
+          
+          marketSummary += `*数据更新时间: ${new Date(data.timestamp).toLocaleString()}*\n\n`;
+          
+          // 先显示市场数据摘要
+          addChatMessage(marketSummary);
+          
+          // 然后显示AI分析
+          addChatMessage(data.aiAnalysis);
+          
+        } else {
+          addChatMessage('抱歉，无法获取市场分析。请稍后再试。');
+        }
+      } catch (error) {
+        console.error('Market analysis error:', error);
+        addChatMessage('获取市场分析时出现错误，请检查网络连接或稍后再试。');
+      }
+    }
+
+    // Markdown渲染函数
+    function renderMarkdown(text) {
+      return text
+        // 标题渲染
+        .replace(/### (.*$)/gim, '<h3 style="color:#1a233a; font-weight:600; margin:16px 0 8px 0; font-size:16px;">$1</h3>')
+        .replace(/## (.*$)/gim, '<h2 style="color:#1a233a; font-weight:700; margin:20px 0 10px 0; font-size:18px;">$1</h2>')
+        .replace(/# (.*$)/gim, '<h1 style="color:#1a233a; font-weight:700; margin:24px 0 12px 0; font-size:20px;">$1</h1>')
+        
+        // 粗体和斜体
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight:600; color:#1a233a;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="font-style:italic;">$1</em>')
+        
+        // 列表渲染
+        .replace(/^\d+\.\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:20px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">•</span>$1</div>')
+        .replace(/^[-*]\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:20px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">•</span>$1</div>')
+        
+        // 行内代码
+        .replace(/`([^`]+)`/g, '<code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-family:monospace; font-size:13px; color:#db0011;">$1</code>')
+        
+        // 换行处理
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // 修改添加聊天消息的函数以支持Markdown渲染
+    function addChatMessage(message, isUser = false) {
+      const chatMessages = document.getElementById('chatMessages');
+      if (!chatMessages) return;
+
+      // 移除欢迎消息
+      const welcomeMessage = chatMessages.querySelector('div[style*="text-align:center"]');
+      if (welcomeMessage) {
+        welcomeMessage.remove();
+      }
+
+      const messageDiv = document.createElement('div');
+      messageDiv.style.cssText = `
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.5;
+        ${isUser 
+          ? 'background: #3b82f6; color: white; margin-left: auto; text-align: right;' 
+          : 'background: #f8fafc; color: #374151; margin-right: auto; border: 1px solid #e5e7eb;'
+        }
+      `;
+
+      if (isUser) {
+        messageDiv.textContent = message;
+      } else {
+        // 对AI回复进行Markdown渲染
+        messageDiv.innerHTML = renderMarkdown(message);
+      }
+
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
     }
   </script>
 </body>
