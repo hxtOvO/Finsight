@@ -1251,8 +1251,8 @@
         const div = document.createElement('div');
         div.className = 'featured-list-item';
         let priceColor = '#1a9c3c', changeColor = '#1a9c3c';
-        if (item.change < 0) { priceColor = '#db0011'; changeColor = '#db0011'; }
-        else if (item.change > 0) { priceColor = '#1a9c3c'; changeColor = '#1a9c3c'; }
+        if (item.change > 0) { priceColor = '#db0011'; changeColor = '#db0011'; }
+        else if (item.change < 0) { priceColor = '#1a9c3c'; changeColor = '#1a9c3c'; }
         else { priceColor = '#222'; changeColor = '#222'; }
         div.innerHTML = `
           <span class="featured-symbol" style="cursor:pointer;" data-symbol="${item.symbol}">${item.symbol}</span>

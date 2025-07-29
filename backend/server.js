@@ -312,7 +312,7 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 //   }
 // });
 
-// // 添加新 featured 栏目股票
+// // 添加新 featured 栏目股票(雅虎接口)
 // app.post('/api/featured-stocks/add', async (req, res) => {
 //   const { symbol } = req.body;
 //   if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
@@ -334,14 +334,13 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 //     res.status(500).json({ error: '添加或获取股价失败' });
 //   }
 // });
-
 const axios = require('axios');
 
 // 配置信息
 const RAPIDAPI_KEY = '3fe2c207edmsh440ab78d11c496bp17df73jsna7db33651503';
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
-// 1. 获取featured栏目股票列表（查）
+//获取featured栏目股票列表（查）
 app.get('/api/featured-stocks', async (req, res) => {
   try {
     const [rows] = await db.execute(
@@ -369,8 +368,7 @@ app.get('/api/featured-stocks', async (req, res) => {
   }
 });
 
-// 2. 添加新featured栏目股票（增）
-// 
+//添加新featured栏目股票（增）
 app.post('/api/featured-stocks/add', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) {
@@ -481,6 +479,65 @@ app.post('/api/featured-stocks/add', async (req, res) => {
   }
 });
 
+
+let SYMBOL_LIST = [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
+  'TSLA', 'META', 'NFLX', 'AMD', 'INTC'
+];
+//  固定的10个 symbol
+
+// ✅ 服务函数
+async function fetchRecommendationTrend(symbol) {
+  try {
+    const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
+      params: {
+        ticker: symbol,
+        module: 'recommendation-trend'
+      },
+      headers: {
+        'x-rapidapi-key': RAPIDAPI_KEY,
+        'x-rapidapi-host': RAPIDAPI_HOST
+      }
+    });
+
+    const trendList = res.data?.body?.trend || [];
+    const latest = trendList.length > 0 ? trendList[0] : null;
+
+    return {
+      symbol,
+      recommendation: latest
+    };
+  } catch (err) {
+    console.error(`Error fetching recommendation trend for ${symbol}:`, err.message);
+    return {
+      symbol,
+      recommendation: null,
+      error: err.message
+    };
+  }
+};
+
+// GET 接口：返回所有 symbol 的推荐趋势
+app.get('/api/recommendation-trend', async (req, res) => {
+
+  const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
+  const results = await Promise.all(promises);
+  res.json(results);
+});
+//Post接口
+app.post('/api/recommendation-trend/add', async (req, res) => {
+  const { symbol } = req.body;
+  if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
+
+  const cleanSymbol = symbol.trim().toUpperCase();
+
+  if (!SYMBOL_LIST.includes(cleanSymbol)) {
+    SYMBOL_LIST.push(cleanSymbol);
+  }
+
+  const result = await fetchRecommendationTrend(cleanSymbol);
+  res.json(result); // ✅ 返回该 symbol 的 trend，而不是整个列表
+});
 
 
 
@@ -731,24 +788,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'FinSight Backend is running (MySQL)' });
 });
 
-// Serve the frontend (保持不变)
 
-// 获取AAPL股价API (保持不变)
-// const yahooFinance = require('yahoo-finance2').default;
-// app.get('/api/stock/aapl', async (req, res) => {
-//   try {
-//     const quote = await yahooFinance.quote('AAPL');
-//     const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
-//     res.json({ price });
-//   } catch (err) {
-//     console.error('Error fetching AAPL stock price:', err);
-//     res.status(500).json({ error: '获取股价失败' });
-//   }
-// });
 
-// app.get('/', (req, res) => {
-//   res.sendFile(__dirname + '/index.html');
-// });
 
 // Start server
 app.listen(PORT, async () => {
