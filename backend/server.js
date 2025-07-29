@@ -337,7 +337,7 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 const axios = require('axios');
 
 // 配置信息
-const RAPIDAPI_KEY = '3fe2c207edmsh440ab78d11c496bp17df73jsna7db33651503';
+const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 //获取featured栏目股票列表（查）
@@ -479,14 +479,11 @@ app.post('/api/featured-stocks/add', async (req, res) => {
   }
 });
 
-
+//  固定的10个 symbol
 let SYMBOL_LIST = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
   'TSLA', 'META', 'NFLX', 'AMD', 'INTC'
 ];
-//  固定的10个 symbol
-
-// ✅ 服务函数
 async function fetchRecommendationTrend(symbol) {
   try {
     const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
@@ -517,14 +514,96 @@ async function fetchRecommendationTrend(symbol) {
   }
 };
 
-// GET 接口：返回所有 symbol 的推荐趋势
+const market_API = 'https://yahoo-finance15.p.rapidapi.com/api/v1/markets/screener';
+
+
+async function fetchMarketList(listType) {
+  const url = `${market_API}?list=${listType}`;
+  const response = await axios.get(url, {
+    headers: {
+      'x-rapidapi-key': RAPIDAPI_KEY,
+      'x-rapidapi-host': RAPIDAPI_HOST
+    }
+  });
+  return response.data;
+}
+
+function extractTop10Quotes(quotes) {
+  return quotes.slice(0, 10).map(item => ({
+    symbol: item.symbol,
+    name: item.shortName || item.longName,
+    price: item.regularMarketPrice,
+    change: item.regularMarketChange,
+    changePercent: item.regularMarketChangePercent,
+    volume: item.regularMarketVolume,
+    marketCap: item.marketCap,
+    fiftyTwoWeekRange: item.fiftyTwoWeekRange
+  }));
+}
+// ✅ 涨幅榜（day_gainers）
+app.get('/api/market/gainers', async (req, res) => {
+  try {
+    const data = await fetchMarketList('day_gainers');
+    const top10 = extractTop10Quotes(data.body || []);
+    res.json(top10);
+  } catch (error) {
+    console.error('Error fetching gainers:', error.message);
+    res.status(500).json({ error: 'Failed to fetch gainers' });
+  }
+});
+
+
+
+// ✅ 跌幅榜（day_losers）
+app.get('/api/market/losers', async (req, res) => {
+  try {
+    const data = await fetchMarketList('day_losers');
+    const top10 = extractTop10Quotes(data.body || []);
+    res.json(top10);
+  } catch (error) {
+    console.error('Error fetching losers:', error.message);
+    res.status(500).json({ error: 'Failed to fetch losers' });
+  }
+});
+
+// ✅ 最活跃榜（most_actives）
+app.get('/api/market/most-active', async (req, res) => {
+  try {
+    const data = await fetchMarketList('most_actives');
+    const top10 = extractTop10Quotes(data.body || []);
+    res.json(top10);
+  } catch (error) {
+    console.error('Error fetching most actives:', error.message);
+    res.status(500).json({ error: 'Failed to fetch most actives' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Get接口：返回所有 symbol 的推荐趋势
 app.get('/api/recommendation-trend', async (req, res) => {
 
   const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
   const results = await Promise.all(promises);
   res.json(results);
 });
-//Post接口
+//Post 接口
 app.post('/api/recommendation-trend/add', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
@@ -536,7 +615,7 @@ app.post('/api/recommendation-trend/add', async (req, res) => {
   }
 
   const result = await fetchRecommendationTrend(cleanSymbol);
-  res.json(result); // ✅ 返回该 symbol 的 trend，而不是整个列表
+  res.json(result);
 });
 
 
@@ -788,6 +867,39 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'FinSight Backend is running (MySQL)' });
 });
 
+
+// 涨幅榜
+app.get('/api/top-gainers', async (req, res) => {
+  try {
+    const result = await getSortedQuotes('gain');
+    res.json(result);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch top gainers.' });
+  }
+});
+
+// 跌幅榜
+app.get('/api/top-losers', async (req, res) => {
+  try {
+    const result = await getSortedQuotes('loss');
+    res.json(result);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch top losers.' });
+  }
+});
+
+// 最活跃
+app.get('/api/most-active', async (req, res) => {
+  try {
+    const result = await getSortedQuotes('volume');
+    res.json(result);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch most active stocks.' });
+  }
+});
 
 
 
