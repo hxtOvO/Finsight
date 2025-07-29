@@ -378,6 +378,7 @@ const axios = require('axios');
 
 // 配置信息
 const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
+const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 //获取featured栏目股票列表（查）
@@ -656,9 +657,85 @@ async function fetchRecommendationTrend(symbol) {
       error: err.message
     };
   }
-};
+}
 
-// GET 接口：返回所有 symbol 的推荐趋势
+// 🤖 加权推荐算法
+function calculateWeightedRecommendation(recommendation) {
+  if (!recommendation) {
+    return {
+      action: 'HOLD',
+      score: 0,
+      confidence: 0,
+      reason: 'No recommendation data available'
+    };
+  }
+
+  const { strongBuy, buy, hold, sell, strongSell } = recommendation;
+  const totalAnalysts = strongBuy + buy + hold + sell + strongSell;
+
+  if (totalAnalysts === 0) {
+    return {
+      action: 'HOLD',
+      score: 0,
+      confidence: 0,
+      reason: 'No analyst data available'
+    };
+  }
+
+  // 计算加权分数 (strongBuy=3, buy=1, hold=0, sell=-1, strongSell=-3)
+  const score = (strongBuy * 3 + buy * 1 + hold * 0 + sell * (-1) + strongSell * (-3)) / totalAnalysts;
+
+  // 确定推荐行动 (只有BUY/HOLD/SELL三种)
+  let action = 'HOLD';
+  if (score >= 0.5) action = 'BUY';
+  else if (score <= -0.5) action = 'SELL';
+
+  // 计算置信度 (0-1)
+  const confidence = Math.min(Math.abs(score) / 3, 1);
+
+  // 生成推荐理由
+  const reason = `Based on comprehensive analysis of ${totalAnalysts} analysts, our system algorithm recommends ${action} with ${(confidence * 100).toFixed(0)}% confidence.`;
+
+  return {
+    action,
+    score: parseFloat(score.toFixed(2)),
+    confidence: parseFloat(confidence.toFixed(2)),
+    total_analysts: totalAnalysts,
+    reason
+  };
+}
+
+// 处理推荐数据的函数
+function processRecommendationData(rawData) {
+  return rawData.map(item => {
+    if (!item.recommendation) {
+      return {
+        symbol: item.symbol,
+        action: 'HOLD',
+        score: 0,
+        confidence: 0,
+        total_analysts: 0,
+        breakdown: {},
+        reason: item.error || 'No recommendation data available',
+        error: item.error
+      };
+    }
+
+    const weighted = calculateWeightedRecommendation(item.recommendation);
+    
+    return {
+      symbol: item.symbol,
+      action: weighted.action,
+      score: weighted.score,
+      confidence: weighted.confidence,
+      total_analysts: weighted.total_analysts,
+      breakdown: item.recommendation,
+      reason: weighted.reason
+    };
+  });
+}
+
+// GET 接口：返回所有 symbol 的推荐趋势（使用加权算法）
 /**
  * @swagger
  * /api/recommendation-trend:
@@ -688,10 +765,13 @@ async function fetchRecommendationTrend(symbol) {
  *                     example: null
  */
 app.get('/api/recommendation-trend', async (req, res) => {
-
   const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
   const results = await Promise.all(promises);
-  res.json(results);
+  
+  // 使用加权算法处理数据
+  const processedResults = processRecommendationData(results);
+  
+  res.json(processedResults);
 });
 //Post接口
 /**
@@ -740,7 +820,9 @@ app.post('/api/recommendation-trend/add', async (req, res) => {
   }
 
   const result = await fetchRecommendationTrend(cleanSymbol);
-  res.json(result); // ✅ 返回该 symbol 的 trend，而不是整个列表
+  const processedResult = processRecommendationData([result])[0];
+  
+  res.json(processedResult);
 });
 
 

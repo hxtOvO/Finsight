@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Recommendations Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        .status.success { background: #d4edda; color: #155724; }
+        .status.error { background: #f8d7da; color: #721c24; }
+        .status.warning { background: #fff3cd; color: #856404; }
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .recommendation-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border-left: 4px solid #ccc;
+        }
+        .recommendation-card.strong-buy { border-left-color: #059669; }
+        .recommendation-card.buy { border-left-color: #10b981; }
+        .recommendation-card.hold { border-left-color: #6b7280; }
+        .recommendation-card.sell { border-left-color: #ef4444; }
+        .recommendation-card.strong-sell { border-left-color: #dc2626; }
+        .symbol {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .action {
+            font-size: 14px;
+            font-weight: bold;
+            padding: 6px 12px;
+            border-radius: 20px;
+            color: white;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+        .action.strong-buy { background: #059669; }
+        .action.buy { background: #10b981; }
+        .action.hold { background: #6b7280; }
+        .action.sell { background: #ef4444; }
+        .action.strong-sell { background: #dc2626; }
+        .metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 10px 0;
+            font-size: 12px;
+        }
+        .metric {
+            background: #f8f9fa;
+            padding: 8px;
+            border-radius: 4px;
+        }
+        .breakdown {
+            margin-top: 15px;
+            font-size: 11px;
+        }
+        .breakdown-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        .reason {
+            margin-top: 15px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .test-controls {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0 10px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🧪 Trading Recommendations Frontend Test</h1>
+        <p>Testing connection between frontend and backend API</p>
+    </div>
+
+    <div class="test-controls">
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="loadRecommendations()">Load Recommendations</button>
+        <button onclick="testWithMockData()">Use Mock Data</button>
+        <button onclick="clearResults()">Clear</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="results"></div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000';
+        
+        function showStatus(message, type = 'success') {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = `status ${type}`;
+            statusDiv.innerHTML = message;
+        }
+
+        async function testConnection() {
+            showStatus('Testing server connection...', 'warning');
+            try {
+                const response = await fetch(`${API_BASE}/api/health`);
+                const data = await response.json();
+                showStatus(`✅ ${data.message}`, 'success');
+            } catch (error) {
+                showStatus(`❌ Connection failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function loadRecommendations() {
+            showStatus('Loading recommendations from API...', 'warning');
+            try {
+                const response = await fetch(`${API_BASE}/api/recommendation-trend`);
+                const data = await response.json();
+                
+                if (data.length > 0) {
+                    showStatus(`✅ Loaded ${data.length} recommendations`, 'success');
+                    renderRecommendations(data);
+                } else {
+                    showStatus('⚠️ No recommendations received', 'warning');
+                }
+            } catch (error) {
+                showStatus(`❌ Failed to load recommendations: ${error.message}`, 'error');
+            }
+        }
+
+        function testWithMockData() {
+            showStatus('✅ Using mock data for testing', 'success');
+            const mockData = [
+                {
+                    symbol: 'AAPL',
+                    recommendation: { strongBuy: 8, buy: 5, hold: 3, sell: 1, strongSell: 0 }
+                },
+                {
+                    symbol: 'MSFT',
+                    recommendation: { strongBuy: 6, buy: 7, hold: 4, sell: 2, strongSell: 1 }
+                },
+                {
+                    symbol: 'GOOGL',
+                    recommendation: { strongBuy: 3, buy: 4, hold: 8, sell: 3, strongSell: 2 }
+                },
+                {
+                    symbol: 'TSLA',
+                    recommendation: { strongBuy: 2, buy: 3, hold: 6, sell: 7, strongSell: 4 }
+                },
+                {
+                    symbol: 'NVDA',
+                    recommendation: { strongBuy: 12, buy: 3, hold: 1, sell: 0, strongSell: 0 }
+                }
+            ];
+            renderRecommendations(mockData);
+        }
+
+        function calculateWeightedRecommendation(recommendation) {
+            if (!recommendation) {
+                return {
+                    action: 'HOLD',
+                    score: 0,
+                    confidence: 0,
+                    reason: 'No recommendation data available'
+                };
+            }
+
+            const { strongBuy, buy, hold, sell, strongSell } = recommendation;
+            const totalAnalysts = strongBuy + buy + hold + sell + strongSell;
+
+            if (totalAnalysts === 0) {
+                return {
+                    action: 'HOLD',
+                    score: 0,
+                    confidence: 0,
+                    reason: 'No analyst data available'
+                };
+            }
+
+            // Calculate weighted score
+            const score = (strongBuy * 3 + buy * 1 + hold * 0 + sell * (-1) + strongSell * (-3)) / totalAnalysts;
+
+            // Determine action
+            let action = 'HOLD';
+            if (score >= 1.5) action = 'STRONG BUY';
+            else if (score >= 0.5) action = 'BUY';
+            else if (score <= -1.5) action = 'STRONG SELL';
+            else if (score <= -0.5) action = 'SELL';
+
+            // Calculate confidence
+            const confidence = Math.min(Math.abs(score) / 3, 1);
+
+            const reason = `Weighted algorithm calculated score ${score.toFixed(2)} from ${totalAnalysts} analysts, triggering ${action} signal with ${(confidence * 100).toFixed(0)}% confidence.`;
+
+            return {
+                action,
+                score: parseFloat(score.toFixed(2)),
+                confidence: parseFloat(confidence.toFixed(2)),
+                total_analysts: totalAnalysts,
+                reason
+            };
+        }
+
+        function renderRecommendations(data) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (!data || data.length === 0) {
+                resultsDiv.innerHTML = '<p>No recommendations to display</p>';
+                return;
+            }
+
+            const validRecommendations = data.filter(item => item.recommendation);
+            const invalidCount = data.length - validRecommendations.length;
+
+            let html = `
+                <h3>📊 Recommendations Summary</h3>
+                <p>Total: ${data.length} | Valid: ${validRecommendations.length} | Invalid: ${invalidCount}</p>
+                <div class="recommendations-grid">
+            `;
+
+            validRecommendations.forEach((item, index) => {
+                const result = calculateWeightedRecommendation(item.recommendation);
+                const actionClass = result.action.toLowerCase().replace(' ', '-');
+                
+                html += `
+                    <div class="recommendation-card ${actionClass}">
+                        <div class="symbol">${item.symbol} #${index + 1}</div>
+                        <div class="action ${actionClass}">${result.action}</div>
+                        
+                        <div class="metrics">
+                            <div class="metric">
+                                <strong>Score:</strong> ${result.score}
+                            </div>
+                            <div class="metric">
+                                <strong>Confidence:</strong> ${(result.confidence * 100).toFixed(0)}%
+                            </div>
+                            <div class="metric">
+                                <strong>Analysts:</strong> ${result.total_analysts}
+                            </div>
+                            <div class="metric">
+                                <strong>Algorithm:</strong> Weighted
+                            </div>
+                        </div>
+
+                        <div class="breakdown">
+                            <strong>📈 Analyst Breakdown:</strong>
+                            <div class="breakdown-row"><span>🚀 Strong Buy:</span><span>${item.recommendation.strongBuy}</span></div>
+                            <div class="breakdown-row"><span>📈 Buy:</span><span>${item.recommendation.buy}</span></div>
+                            <div class="breakdown-row"><span>⚖️ Hold:</span><span>${item.recommendation.hold}</span></div>
+                            <div class="breakdown-row"><span>📉 Sell:</span><span>${item.recommendation.sell}</span></div>
+                            <div class="breakdown-row"><span>⬇️ Strong Sell:</span><span>${item.recommendation.strongSell}</span></div>
+                        </div>
+
+                        <div class="reason">
+                            <strong>🤖 System Reason:</strong><br>
+                            ${result.reason}
+                        </div>
+                    </div>
+                `;
+            });
+
+            // Show invalid recommendations
+            const invalidRecommendations = data.filter(item => !item.recommendation);
+            invalidRecommendations.forEach(item => {
+                html += `
+                    <div class="recommendation-card">
+                        <div class="symbol">${item.symbol}</div>
+                        <div class="action" style="background: #dc3545;">ERROR</div>
+                        <div class="reason">
+                            <strong>❌ Error:</strong><br>
+                            ${item.error || 'No recommendation data available'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            html += '</div>';
+            resultsDiv.innerHTML = html;
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+            document.getElementById('status').innerHTML = '';
+        }
+
+        // Auto-test on page load
+        window.onload = function() {
+            testConnection();
+        };
+    </script>
+</body>
+</html>
