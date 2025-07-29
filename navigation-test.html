@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Navigation Test</title>
+</head>
+<body>
+    <h1>测试新的导航功能</h1>
+    <p>请在浏览器中打开 frontend/index.html 来测试以下功能：</p>
+    
+    <h2>✅ 已完成的修改：</h2>
+    <ul>
+        <li>✅ 在导航栏中添加了 "Market" 按钮</li>
+        <li>✅ 修改了 setTab() 函数支持三个选项卡：Performance、Manage、Market</li>
+        <li>✅ 添加了 Market 页面内容（空白页 + FINSIGHT logo + 三个按钮）</li>
+        <li>✅ 实现了 if-elseif-else 的切换逻辑</li>
+        <li>✅ 移除了旧的导航事件监听器</li>
+    </ul>
+    
+    <h2>🎯 现在应该看到：</h2>
+    <ol>
+        <li><strong>Performance tab</strong>：原来的仪表板页面（默认选中）</li>
+        <li><strong>Manage tab</strong>：资产管理页面</li>
+        <li><strong>Market tab</strong>：新的市场页面，包含：
+            <ul>
+                <li>FINSIGHT logo</li>
+                <li>三个按钮：Market Overview、Stock Screener、News & Analysis</li>
+                <li>空白的背景</li>
+            </ul>
+        </li>
+    </ol>
+    
+    <h2>🔧 切换逻辑：</h2>
+    <pre>
+    if (tab === 'performance') {
+        // 显示 Performance 页面，隐藏其他页面
+    } else if (tab === 'manage') {
+        // 显示 Manage 页面，隐藏其他页面  
+    } else if (tab === 'market') {
+        // 显示 Market 页面，隐藏其他页面
+    }
+    </pre>
+    
+    <h2>📱 Market 页面设计：</h2>
+    <p>Market 页面当前是一个简洁的空白页面，包含：</p>
+    <ul>
+        <li>居中的 FINSIGHT logo</li>
+        <li>三个功能按钮：
+            <ul>
+                <li>Market Overview（红色按钮，选中状态）</li>
+                <li>Stock Screener（白色按钮）</li>
+                <li>News & Analysis（白色按钮）</li>
+            </ul>
+        </li>
+    </ul>
+    
+    <p><strong>注意：</strong>目前这些按钮只是占位符，没有实际功能，符合您"显示空白页"的要求。</p>
+</body>
+</html>
