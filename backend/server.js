@@ -79,7 +79,7 @@ async function createTables() {
       id INT AUTO_INCREMENT PRIMARY KEY,
       total_value DECIMAL(12,2) NOT NULL,
       gain_loss DECIMAL(12,2) NOT NULL,
-      gain_loss_percent DECIMAL(5,2) NOT NULL,
+      gain_loss_percent DECIMAL(8,2) NOT NULL,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `;
