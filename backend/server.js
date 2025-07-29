@@ -1561,23 +1561,6 @@ app.get('/api/most-active', async (req, res) => {
   }
 });
 
-
-
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
-  await initDatabase();
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  if (db) {
-    await db.end();
-    console.log('🔌 MySQL connection closed.');
-  }
-  process.exit(0);
-});
-
 /**
  * @swagger
  * /api/assets/{assetType}/performance/{range}:
