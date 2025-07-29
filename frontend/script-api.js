@@ -720,3 +720,96 @@ async function updateSelectedAssetChart(range = '7d') {
         selectedAssetChart.update();
     }
 }
+
+async function fetchSelectedAssetPerformanceData(assetType, range) {
+  try {
+    let assetType = 'stock';
+    console.log(`🌐 API请求 ${assetType} 资产 ${range} 数据...`);
+    const response = await fetch(`api/assets/${assetType}/performance/${range}`);
+    if (!response.ok) throw new Error('Failed to fetch selected asset performance data');
+    const data = await response.json();
+    
+    console.log(`📊 API返回 ${assetType} 资产 ${range} 数据:`, data.length, '个数据点');
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching selected asset performance data:', error);
+    // 可以添加生成 fallback 数据的逻辑
+    return [];
+  }
+}
+
+async function updateSelectedAssetChart(assetType, range = '7d') {
+  const performanceData = await fetchSelectedAssetPerformanceData(assetType, range);
+  const labels = getLabelsFromData(performanceData, range);
+  const values = getValuesFromData(performanceData, range);
+    
+  // 确保数据长度一致
+  if (labels.length !== values.length) {
+      console.error('警告：labels 和 values 长度不一致！', labels.length, values.length);
+  }
+
+  if (!selectedAssetChart) {
+    const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
+    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
+    gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+
+    selectedAssetChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: `${assetType} Asset Value`,
+          data: values,
+          borderColor: '#db0011',
+          backgroundColor: gradient,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#db0011',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.38
+        }]
+      },
+      options: {
+        responsive: true,
+        animation: {
+          duration: 1600,
+          easing: 'easeOutQuart',
+          animateScale: true,
+          animateRotate: true,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: 'nearest',
+            intersect: false,
+            backgroundColor: '#fff',
+            titleColor: '#db0011',
+            bodyColor: '#222',
+            borderColor: '#db0011',
+            borderWidth: 1,
+            padding: 12,
+            titleFont: { weight: 'bold', size: 16 },
+            bodyFont: { size: 15 },
+            callbacks: {
+              title: function(tooltipItems) {
+                return tooltipItems[0].label;
+              },
+              label: function(context) {
+                return formatMoney(context.parsed.y);
+              }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    selectedAssetChart.data.labels = labels;
+    selectedAssetChart.data.datasets[0].data = values;
+    selectedAssetChart.update();
+  }
+}

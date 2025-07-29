@@ -141,11 +141,11 @@
   align-items: center;
   justify-content: center;
 }
-#portfolioChart {
+/* #portfolioChart {
   width: 100% !important;
   max-width: 600px;
   height: 320px !important;
-}
+} */
 .chartjs-render-monitor + .chartjs-legend {
   display: flex !important;
   flex-direction: row !important;
