@@ -377,7 +377,7 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 const axios = require('axios');
 
 // 配置信息
-const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd'; // 替换为你的实际API密钥
+// const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd'; // 替换为你的实际API密钥
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 //获取featured栏目股票列表（查）
@@ -1213,6 +1213,213 @@ app.get('/api/performance/:range', async (req, res) => {
   }
 });
 
+// 增加资产接口
+/**
+ * @swagger
+ * /api/assets/{type}/add:
+ *   post:
+ *     summary: 增加指定类型资产
+ *     description: 增加现金、债券、股票、其他资产的数量
+ *     tags: [Assets]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cash, stock, bond, other]
+ *         description: 资产类型
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 example: 1000.50
+ *                 description: 增加的资产数量
+ *               symbol:
+ *                 type: string
+ *                 example: "AAPL"
+ *                 description: 股票代码（仅type=stock时需要）
+ *     responses:
+ *       200:
+ *         description: 增加成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 totalPortfolio:
+ *                   type: number
+ *                   format: float
+ *       400:
+ *         description: 参数错误（如缺少数量或股票代码）
+ *       500:
+ *         description: 服务器错误
+ */
+app.post('/api/assets/:type/add', async (req, res) => {
+  const { type } = req.params;
+  const { amount, symbol } = req.body;
+
+  try {
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ error: '缺少增加的资产数量 (amount)' });
+    }
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ error: '增加的资产数量 (amount) 必须是正数' });
+    }
+
+    if (type === 'stock') {
+      if (!symbol) {
+        return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
+      }
+      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', [type, symbol]);
+      if (stockAsset.length === 0) {
+        // 如果没有该股票记录，则插入新记录
+        await db.execute('INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', [type, symbol, numericAmount]);
+      } else {
+        // 更新现有记录
+        const newAmount = Number(stockAsset[0].amount) + numericAmount;
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, stockAsset[0].id]);
+      }
+    } else {
+      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
+      if (asset.length === 0) {
+        // 如果没有该类型资产记录，则插入新记录
+        await db.execute('INSERT INTO current_assets (type, amount) VALUES (?, ?)', [type, numericAmount]);
+      } else {
+        // 更新现有记录
+        const newAmount = Number(asset[0].amount) + numericAmount;
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
+      }
+    }
+
+    const totalPortfolio = await calculateCurrentTotalValue();
+    res.json({ success: true, totalPortfolio });
+  } catch (error) {
+    console.error('Error in /api/assets/:type/add:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 减少资产接口
+/**
+ * @swagger
+ * /api/assets/{type}/reduce:
+ *   post:
+ *     summary: 减少指定类型资产
+ *     description: 减少现金、债券、股票、其他资产的数量
+ *     tags: [Assets]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cash, stock, bond, other]
+ *         description: 资产类型
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 example: 1000.50
+ *                 description: 减少的资产数量
+ *               symbol:
+ *                 type: string
+ *                 example: "AAPL"
+ *                 description: 股票代码（仅type=stock时需要）
+ *     responses:
+ *       200:
+ *         description: 减少成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 totalPortfolio:
+ *                   type: number
+ *                   format: float
+ *       400:
+ *         description: 参数错误（如缺少数量或股票代码）
+ *       403:
+ *         description: 资产数量不足
+ *       500:
+ *         description: 服务器错误
+ */
+app.post('/api/assets/:type/reduce', async (req, res) => {
+  const { type } = req.params;
+  const { amount, symbol } = req.body;
+
+  try {
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ error: '缺少减少的资产数量 (amount)' });
+    }
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ error: '减少的资产数量 (amount) 必须是正数' });
+    }
+
+    if (type === 'stock') {
+      if (!symbol) {
+        return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
+      }
+      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', [type, symbol]);
+      if (stockAsset.length === 0) {
+        return res.status(403).json({ error: `没有 ${symbol} 股票记录，无法减少` });
+      }
+      const currentAmount = Number(stockAsset[0].amount);
+      if (currentAmount < numericAmount) {
+        return res.status(403).json({ error: `持有的 ${symbol} 股票数量不足，无法减少` });
+      }
+      const newAmount = currentAmount - numericAmount;
+      if (newAmount === 0) {
+        await db.execute('DELETE FROM current_assets WHERE id = ?', [stockAsset[0].id]);
+      } else {
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, stockAsset[0].id]);
+      }
+    } else {
+      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
+      if (asset.length === 0) {
+        return res.status(403).json({ error: `没有 ${type} 资产记录，无法减少` });
+      }
+      const currentAmount = Number(asset[0].amount);
+      if (currentAmount < numericAmount) {
+        return res.status(403).json({ error: `${type} 资产数量不足，无法减少` });
+      }
+      const newAmount = currentAmount - numericAmount;
+      if (newAmount === 0) {
+        await db.execute('DELETE FROM current_assets WHERE id = ?', [asset[0].id]);
+      } else {
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
+      }
+    }
+
+    const totalPortfolio = await calculateCurrentTotalValue();
+    res.json({ success: true, totalPortfolio });
+  } catch (error) {
+    console.error('Error in /api/assets/:type/reduce:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Health check
 /**
@@ -1239,24 +1446,6 @@ app.get('/api/performance/:range', async (req, res) => {
  */
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'FinSight Backend is running (MySQL)' });
-});
-
-
-
-
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
-  await initDatabase();
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  if (db) {
-    await db.end();
-    console.log('🔌 MySQL connection closed.');
-  }
-  process.exit(0);
 });
 
 /**
@@ -1363,4 +1552,19 @@ app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
     console.error('Error fetching asset performance data:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Start server
+app.listen(PORT, async () => {
+  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
+  await initDatabase();
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  if (db) {
+    await db.end();
+    console.log('🔌 MySQL connection closed.');
+  }
+  process.exit(0);
 });

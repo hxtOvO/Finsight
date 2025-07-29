@@ -398,7 +398,7 @@
               const transactionDescription = document.getElementById('transactionDescription');
               
               if (cashConfirmBtn) {
-                cashConfirmBtn.addEventListener('click', () => {
+                cashConfirmBtn.addEventListener('click', async () => {
                   const amount = cashAmountInput.value;
                   const operation = selectedCashOperation;
                   const description = transactionDescription.value;
@@ -408,14 +408,32 @@
                     return;
                   }
                   
-                  // 这里可以添加提交到后端的逻辑
-                  console.log('Cash transaction:', {
-                    operation: operation,
-                    amount: parseFloat(amount),
-                    description: description || 'No description'
-                  });
+                  // 调用后端接口
+                  try {
+                    const response = await fetch('http://localhost:3000/api/assets/cash/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            amount: parseFloat(amount)
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error);
+                    }
+
+                    const data = await response.json();
+                    console.log('API response:', data);
+                    alert(`Cash ${operation} of $${amount} confirmed!`);
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert(`An error occurred: ${error.message}`);
+                }
                   
-                  alert(`Cash ${operation} of $${amount} confirmed!`);
+                  // alert(`Cash ${operation} of $${amount} confirmed!`);
                 });
               }
               
