@@ -764,3 +764,66 @@ process.on('SIGINT', async () => {
   }
   process.exit(0);
 });
+
+app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
+  const { assetType, range } = req.params;
+  let query = '';
+  let values = [];
+
+  // 根据不同的资产类型和时间范围构建 SQL 查询语句
+  let assetColumn = '';
+  switch (assetType) {
+    case 'cash':
+      assetColumn = 'cash_value';
+      break;
+    case 'bond':
+      assetColumn = 'bond_value';
+      break;
+    case 'stock':
+      assetColumn = 'stock_value';
+      break;
+    case 'other':
+      assetColumn = 'other_value';
+      break;
+    default:
+      return res.status(400).json({ error: 'Invalid asset type' });
+  }
+
+  switch (range) {
+    case '7d':
+      query = `
+        SELECT date, ${assetColumn} as value
+        FROM asset_history
+        WHERE date >= CURDATE() - INTERVAL 7 DAY
+        ORDER BY date ASC
+      `;
+      break;
+    case '1m':
+      query = `
+        SELECT date, ${assetColumn} as value
+        FROM asset_history
+        WHERE date >= CURDATE() - INTERVAL 1 MONTH
+        ORDER BY date ASC
+      `;
+      break;
+    case '6m':
+      query = `
+        SELECT date, ${assetColumn} as value
+        FROM asset_history
+        WHERE date >= CURDATE() - INTERVAL 6 MONTH
+        ORDER BY date ASC
+      `;
+      break;
+    default:
+      return res.status(400).json({ error: 'Invalid range' });
+  }
+
+  try {
+    // 执行 SQL 查询
+    const [rows] = await db.execute(query, values);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching asset performance data:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
