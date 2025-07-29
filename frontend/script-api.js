@@ -598,33 +598,6 @@ async function fetchSelectedAssetData(range) {
     }
 }
 
-// document.addEventListener('DOMContentLoaded', async function() {
-//     const ctx = document.getElementById('selectedAssetChart').getContext('2d');
-//     const range = '7d'; // 默认时间范围
-//     const data = await fetchSelectedAssetData(range);
-
-//     const labels = data.map(item => item.date);
-//     const values = data.map(item => item.value);
-
-//     new Chart(ctx, {
-//         type: 'line',
-//         data: {
-//             labels: labels,
-//             datasets: [{
-//                 label: 'Selected Asset Performance',
-//                 data: values,
-//                 borderColor: 'blue',
-//                 backgroundColor: 'rgba(0, 0, 255, 0.1)',
-//                 fill: true
-//             }]
-//         },
-//         options: {
-//             responsive: true,
-//             maintainAspectRatio: false
-//         }
-//     });
-// });
-
 // 在页面加载时初始化 selectedAssetChart
 document.addEventListener('DOMContentLoaded', function() {
     // 初始化 selectedAssetChart
