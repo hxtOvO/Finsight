@@ -223,10 +223,6 @@ async function updateChart(range = '7d') {
   const performanceData = await fetchPerformanceData(range);
   const labels = getLabelsFromData(performanceData, range);
   const values = getValuesFromData(performanceData, range);
-  
-  // 添加日志，检查处理后的数据
-  console.log('处理后的 labels:', labels);
-  console.log('处理后的 values:', values);
     
   // 确保数据长度一致
   if (labels.length !== values.length) {
@@ -241,70 +237,56 @@ async function updateChart(range = '7d') {
     gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
 
     chart = new Chart(ctx, {
-      type: 'line',
-      data: {
-        labels: labels,
-        datasets: [{
-          label: 'Portfolio Value',
-          data: values,
-          borderColor: '#db0011',
-          backgroundColor: gradient,
-          pointRadius: 0,
-          pointHoverRadius: 6,
-          pointBackgroundColor: '#fff',
-          pointBorderColor: '#db0011',
-          borderWidth: 2,
-          fill: true,
-          tension: 0.38
-        }]
-      },
-      options: {
-        responsive: true,
-        animation: {
-          duration: 1600,
-          easing: 'easeOutQuart',
-          animateScale: true,
-          animateRotate: true,
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-                      mode: 'nearest', // <--- 将这里改为 'nearest'
-                      intersect: false, // 可以保持为 false，或者改为 true 尝试更精确的点击
-                      backgroundColor: '#fff',
-                      titleColor: '#db0011',
-                      bodyColor: '#222',
-                      borderColor: '#db0011',
-                      borderWidth: 1,
-                      padding: 12,
-                      titleFont: { weight: 'bold', size: 16 },
-                      bodyFont: { size: 15 },
-                      // 添加一个回调函数，用于自定义tooltip标题，确保显示正确日期
-                      callbacks: {
-                        title: function(tooltipItems) {
-                          // tooltipItems[0].label 包含了当前数据点的标签（日期）
-                          return tooltipItems[0].label;
-                        },
-                        label: function(context) {
-                          // context.dataset.label 是数据集的标签 'Portfolio Value'
-                          // context.parsed.y 是当前数据点的Y轴值
-                          return `${context.dataset.label}: ${formatMoney(context.parsed.y)}`;
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Selected Asset Value',
+                    data: values,
+                    borderColor: '#db0011',
+                    backgroundColor: gradient,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#db0011',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.38
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 1600,
+                    easing: 'easeOutQuart',
+                    animateScale: true,
+                    animateRotate: true,
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                        backgroundColor: '#fff',
+                        titleColor: '#db0011',
+                        bodyColor: '#222',
+                        borderColor: '#db0011',
+                        borderWidth: 1,
+                        padding: 12,
+                        titleFont: { weight: 'bold', size: 16 },
+                        bodyFont: { size: 15 },
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return tooltipItems[0].label;
+                            },
+                            label: function(context) {
+                                return formatMoney(context.parsed.y);
+                            }
                         }
-                      }
-                    },
-        },
-        scales: {
-          x: {
-            grid: { display: false },
-            ticks: { color: '#222', font: { size: 14 } },
-          },
-          y: {
-            grid: { display: false },
-            ticks: { color: isPrivacyMode ? '#fff' : '#222', font: { size: 14 } },
-          },
-        },
-      }
-    });
+                    }
+                }
+            }
+        });
   } else {
     // 隐私模式下所有区间y轴刻度为白色，否则为深色
     chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
@@ -600,3 +582,234 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
   });
 });
+
+let selectedAssetChart;
+
+async function fetchSelectedAssetData(range) {
+    try {
+        const response = await fetch(`/api/selected-asset/${range}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch selected asset data');
+        }
+        return await response.json();
+    } catch (error) {
+        console.error('Error fetching selected asset data:', error);
+        return [];
+    }
+}
+
+// document.addEventListener('DOMContentLoaded', async function() {
+//     const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+//     const range = '7d'; // 默认时间范围
+//     const data = await fetchSelectedAssetData(range);
+
+//     const labels = data.map(item => item.date);
+//     const values = data.map(item => item.value);
+
+//     new Chart(ctx, {
+//         type: 'line',
+//         data: {
+//             labels: labels,
+//             datasets: [{
+//                 label: 'Selected Asset Performance',
+//                 data: values,
+//                 borderColor: 'blue',
+//                 backgroundColor: 'rgba(0, 0, 255, 0.1)',
+//                 fill: true
+//             }]
+//         },
+//         options: {
+//             responsive: true,
+//             maintainAspectRatio: false
+//         }
+//     });
+// });
+
+// 在页面加载时初始化 selectedAssetChart
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化 selectedAssetChart
+    updateSelectedAssetChart('7d');
+
+    // 为左下角的切换按钮添加事件监听器
+    document.querySelectorAll('.range-toggle button[data-chart="selectedAsset"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.range-toggle button[data-chart="selectedAsset"]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const range = this.dataset.range;
+            updateSelectedAssetChart(range);
+        });
+    });
+});
+
+// 新增函数，用于获取数据并更新 selectedAssetChart
+async function updateSelectedAssetChart(range = '7d') {
+    const performanceData = await fetchPerformanceData(range);
+    const labels = getLabelsFromData(performanceData, range);
+    const values = getValuesFromData(performanceData, range);
+
+    // 添加日志，检查处理后的数据
+    console.log('处理后的 selectedAssetChart labels:', labels);
+    console.log('处理后的 selectedAssetChart values:', values);
+
+    // 确保数据长度一致
+    if (labels.length !== values.length) {
+        console.error('警告：selectedAssetChart 的 labels 和 values 长度不一致！', labels.length, values.length);
+    }
+
+    if (!selectedAssetChart) {
+        const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+        gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
+        gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
+        gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+
+        selectedAssetChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Selected Asset Value',
+                    data: values,
+                    borderColor: '#db0011',
+                    backgroundColor: gradient,
+                    pointRadius: 0,
+                    pointHoverRadius: 6,
+                    pointBackgroundColor: '#fff',
+                    pointBorderColor: '#db0011',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.38
+                }]
+            },
+            options: {
+                responsive: true,
+                animation: {
+                    duration: 1600,
+                    easing: 'easeOutQuart',
+                    animateScale: true,
+                    animateRotate: true,
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'nearest',
+                        intersect: false,
+                        backgroundColor: '#fff',
+                        titleColor: '#db0011',
+                        bodyColor: '#222',
+                        borderColor: '#db0011',
+                        borderWidth: 1,
+                        padding: 12,
+                        titleFont: { weight: 'bold', size: 16 },
+                        bodyFont: { size: 15 },
+                        callbacks: {
+                            title: function(tooltipItems) {
+                                return tooltipItems[0].label;
+                            },
+                            label: function(context) {
+                                return formatMoney(context.parsed.y);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    } else {
+        selectedAssetChart.data.labels = labels;
+        selectedAssetChart.data.datasets[0].data = values;
+        selectedAssetChart.update();
+    }
+}
+
+async function fetchSelectedAssetPerformanceData(assetType, range) {
+  try {
+    let assetType = 'stock';
+    console.log(`🌐 API请求 ${assetType} 资产 ${range} 数据...`);
+    const response = await fetch(`api/assets/${assetType}/performance/${range}`);
+    if (!response.ok) throw new Error('Failed to fetch selected asset performance data');
+    const data = await response.json();
+    
+    console.log(`📊 API返回 ${assetType} 资产 ${range} 数据:`, data.length, '个数据点');
+    
+    return data;
+  } catch (error) {
+    console.error('Error fetching selected asset performance data:', error);
+    // 可以添加生成 fallback 数据的逻辑
+    return [];
+  }
+}
+
+async function updateSelectedAssetChart(assetType, range = '7d') {
+  const performanceData = await fetchSelectedAssetPerformanceData(assetType, range);
+  const labels = getLabelsFromData(performanceData, range);
+  const values = getValuesFromData(performanceData, range);
+    
+  // 确保数据长度一致
+  if (labels.length !== values.length) {
+      console.error('警告：labels 和 values 长度不一致！', labels.length, values.length);
+  }
+
+  if (!selectedAssetChart) {
+    const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
+    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
+    gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+
+    selectedAssetChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: `${assetType} Asset Value`,
+          data: values,
+          borderColor: '#db0011',
+          backgroundColor: gradient,
+          pointRadius: 0,
+          pointHoverRadius: 6,
+          pointBackgroundColor: '#fff',
+          pointBorderColor: '#db0011',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.38
+        }]
+      },
+      options: {
+        responsive: true,
+        animation: {
+          duration: 1600,
+          easing: 'easeOutQuart',
+          animateScale: true,
+          animateRotate: true,
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            mode: 'nearest',
+            intersect: false,
+            backgroundColor: '#fff',
+            titleColor: '#db0011',
+            bodyColor: '#222',
+            borderColor: '#db0011',
+            borderWidth: 1,
+            padding: 12,
+            titleFont: { weight: 'bold', size: 16 },
+            bodyFont: { size: 15 },
+            callbacks: {
+              title: function(tooltipItems) {
+                return tooltipItems[0].label;
+              },
+              label: function(context) {
+                return formatMoney(context.parsed.y);
+              }
+            }
+          }
+        }
+      }
+    });
+  } else {
+    selectedAssetChart.data.labels = labels;
+    selectedAssetChart.data.datasets[0].data = values;
+    selectedAssetChart.update();
+  }
+}
