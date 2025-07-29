@@ -9,6 +9,7 @@
 
 /* Navigation buttons vertical layout and theme */
 /* .dashboard-main {
+/* .dashboard-main {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
@@ -93,6 +94,8 @@
 }
 
 #portfolioChart {
+  width: 320px !important;
+  /* max-width: 600px; */
   width: 320px !important;
   /* max-width: 600px; */
   height: 320px !important;
