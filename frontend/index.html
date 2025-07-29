@@ -258,14 +258,24 @@
         const manageBtn = document.querySelector('.nav-manage');
         const dashboardMain = document.querySelector('.dashboard-main');
         const headerRight = document.querySelector('.header-right');
-        // manage tab 按钮容器
+        // manage tab 按钮容器和右侧panel
         let managePanel = document.getElementById('managePanel');
+        let manageHistoryPanel = document.getElementById('manageHistoryPanel');
         if (!managePanel) {
+          // 外层容器，横向flex
+          const manageWrapper = document.createElement('div');
+          manageWrapper.id = 'manageWrapper';
+          manageWrapper.style.display = 'none';
+          manageWrapper.style.width = '100%';
+          manageWrapper.style.margin = '48px 0 0 0';
+          manageWrapper.style.flexDirection = 'row';
+          manageWrapper.style.alignItems = 'flex-start';
+          manageWrapper.style.justifyContent = 'flex-start';
+          manageWrapper.style.gap = '38px';
+
           managePanel = document.createElement('div');
           managePanel.id = 'managePanel';
-          managePanel.style.display = 'none';
           managePanel.style.width = '170px';
-          managePanel.style.margin = '48px 0 0 0';
           managePanel.style.display = 'flex';
           managePanel.style.flexDirection = 'column';
           managePanel.style.alignItems = 'flex-start';
@@ -277,47 +287,625 @@
             <button class="manage-btn" data-type="Bond">Bond</button>
             <button class="manage-btn" data-type="Other">Other</button>
           `;
-        // 按钮选中样式逻辑
-        function updateManageBtnActive(selectedType) {
-          const btns = managePanel.querySelectorAll('.manage-btn');
-          btns.forEach(btn => {
-            if (btn.getAttribute('data-type') === selectedType) {
-            btn.style.background = '#db0011';
-            btn.style.color = '#fff';
-            btn.style.border = 'none';
-            } else {
-            btn.style.background = '#fff';
-            btn.style.color = '#222';
-            btn.style.border = 'none';
+
+          // 插入输入框（仅在Cash选中时显示）
+          const cashInputWrapper = document.createElement('div');
+          cashInputWrapper.id = 'cashInputWrapper';
+          cashInputWrapper.style.width = '100%';
+          cashInputWrapper.style.margin = '18px 0 0 0';
+          cashInputWrapper.style.display = 'none';
+          cashInputWrapper.style.height = '120px';
+          cashInputWrapper.style.display = 'flex';
+          cashInputWrapper.style.justifyContent = 'center';
+          cashInputWrapper.style.alignItems = 'center';
+          cashInputWrapper.style.flexDirection = 'column';
+          cashInputWrapper.style.transform = 'translate(300px, -280px)';
+          cashInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter the amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
+            </div>
+            <input id="cashAmountInput" type="number" step="0.01" min="0" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="cashInBtn" style="padding:12px 20px;background:#db0011;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(219,0,17,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Cash In +</button>
+              <button id="cashOutBtn" style="padding:12px 20px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Cash Out -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="transactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:24px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+            <div style="display:flex;gap:16px;width:360%;max-width:520px;">
+              <button id="cashConfirmBtn" style="flex:1;padding:16px 24px;background:#db0011;color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(219,0,17,0.3);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Confirm</button>
+              <button id="cashClearBtn" style="flex:1;padding:16px 24px;background:#fff;color:#333;border:2px solid #ddd;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(0,0,0,0.1);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Clear</button>
+            </div>
+          `;
+          managePanel.appendChild(cashInputWrapper);
+
+          // 添加Cash按钮切换逻辑
+          setTimeout(() => {
+            const cashInBtn = document.getElementById('cashInBtn');
+            const cashOutBtn = document.getElementById('cashOutBtn');
+            
+            if (cashInBtn && cashOutBtn) {
+              // 设置默认选中Cash In
+              let selectedCashOperation = 'in';
+              
+              function updateCashButtonStyles() {
+                if (selectedCashOperation === 'in') {
+                  cashInBtn.style.background = '#db0011';
+                  cashInBtn.style.color = '#fff';
+                  cashInBtn.style.border = 'none';
+                  cashInBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  cashOutBtn.style.background = '#fff';
+                  cashOutBtn.style.color = '#222';
+                  cashOutBtn.style.border = '1px solid #ddd';
+                  cashOutBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                } else {
+                  cashOutBtn.style.background = '#db0011';
+                  cashOutBtn.style.color = '#fff';
+                  cashOutBtn.style.border = 'none';
+                  cashOutBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  cashInBtn.style.background = '#fff';
+                  cashInBtn.style.color = '#222';
+                  cashInBtn.style.border = '1px solid #ddd';
+                  cashInBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                }
+              }
+              
+              cashInBtn.addEventListener('click', () => {
+                selectedCashOperation = 'in';
+                updateCashButtonStyles();
+              });
+              
+              cashOutBtn.addEventListener('click', () => {
+                selectedCashOperation = 'out';
+                updateCashButtonStyles();
+              });
+              
+              // 添加Confirm和Clear按钮功能
+              const cashConfirmBtn = document.getElementById('cashConfirmBtn');
+              const cashClearBtn = document.getElementById('cashClearBtn');
+              const cashAmountInput = document.getElementById('cashAmountInput');
+              const transactionDescription = document.getElementById('transactionDescription');
+              
+              if (cashConfirmBtn) {
+                cashConfirmBtn.addEventListener('click', () => {
+                  const amount = cashAmountInput.value;
+                  const operation = selectedCashOperation;
+                  const description = transactionDescription.value;
+                  
+                  if (!amount || parseFloat(amount) <= 0) {
+                    alert('Please enter a valid amount');
+                    return;
+                  }
+                  
+                  // 这里可以添加提交到后端的逻辑
+                  console.log('Cash transaction:', {
+                    operation: operation,
+                    amount: parseFloat(amount),
+                    description: description || 'No description'
+                  });
+                  
+                  alert(`Cash ${operation} of $${amount} confirmed!`);
+                });
+              }
+              
+              if (cashClearBtn) {
+                cashClearBtn.addEventListener('click', () => {
+                  cashAmountInput.value = '';
+                  transactionDescription.value = '';
+                  selectedCashOperation = 'in';
+                  updateCashButtonStyles();
+                });
+              }
             }
-            btn.style.padding = '12px 32px';
-            btn.style.borderRadius = '8px';
-            btn.style.fontSize = '20px';
-            btn.style.fontWeight = '600';
-            btn.style.cursor = 'pointer';
-            btn.style.textAlign = 'center';
-            btn.style.width = '100%';
-            btn.style.boxSizing = 'border-box';
-            btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
-            btn.style.transition = 'box-shadow 0.18s, background 0.18s, color 0.18s';
-            btn.onmouseover = function() {
-              btn.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
-            };
-            btn.onmouseout = function() {
+          }, 100);
+
+          // 添加Stock按钮切换逻辑
+          setTimeout(() => {
+            const stockBuyBtn = document.getElementById('stockBuyBtn');
+            const stockSellBtn = document.getElementById('stockSellBtn');
+            
+            if (stockBuyBtn && stockSellBtn) {
+              let selectedStockOperation = 'buy';
+              
+              function updateStockButtonStyles() {
+                if (selectedStockOperation === 'buy') {
+                  stockBuyBtn.style.background = '#db0011';
+                  stockBuyBtn.style.color = '#fff';
+                  stockBuyBtn.style.border = 'none';
+                  stockBuyBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  stockSellBtn.style.background = '#fff';
+                  stockSellBtn.style.color = '#222';
+                  stockSellBtn.style.border = '1px solid #ddd';
+                  stockSellBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                } else {
+                  stockSellBtn.style.background = '#db0011';
+                  stockSellBtn.style.color = '#fff';
+                  stockSellBtn.style.border = 'none';
+                  stockSellBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  stockBuyBtn.style.background = '#fff';
+                  stockBuyBtn.style.color = '#222';
+                  stockBuyBtn.style.border = '1px solid #ddd';
+                  stockBuyBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                }
+              }
+              
+              stockBuyBtn.addEventListener('click', () => {
+                selectedStockOperation = 'buy';
+                updateStockButtonStyles();
+              });
+              
+              stockSellBtn.addEventListener('click', () => {
+                selectedStockOperation = 'sell';
+                updateStockButtonStyles();
+              });
+              
+              // 添加Stock Confirm和Clear按钮功能
+              const stockConfirmBtn = document.getElementById('stockConfirmBtn');
+              const stockClearBtn = document.getElementById('stockClearBtn');
+              const stockSymbolInput = document.getElementById('stockSymbolInput');
+              const stockQuantityInput = document.getElementById('stockQuantityInput');
+              const stockTransactionDescription = document.getElementById('stockTransactionDescription');
+              
+              if (stockConfirmBtn) {
+                stockConfirmBtn.addEventListener('click', () => {
+                  const symbol = stockSymbolInput.value.trim().toUpperCase();
+                  const quantity = stockQuantityInput.value;
+                  const operation = selectedStockOperation;
+                  const description = stockTransactionDescription.value;
+                  
+                  if (!symbol) {
+                    alert('Please enter a stock symbol');
+                    return;
+                  }
+                  if (!quantity || parseInt(quantity) <= 0) {
+                    alert('Please enter a valid quantity');
+                    return;
+                  }
+                  
+                  console.log('Stock transaction:', {
+                    operation: operation,
+                    symbol: symbol,
+                    quantity: parseInt(quantity),
+                    description: description || 'No description'
+                  });
+                  
+                  alert(`Stock ${operation} of ${quantity} shares of ${symbol} confirmed!`);
+                });
+              }
+              
+              if (stockClearBtn) {
+                stockClearBtn.addEventListener('click', () => {
+                  stockSymbolInput.value = '';
+                  stockQuantityInput.value = '';
+                  stockTransactionDescription.value = '';
+                  selectedStockOperation = 'buy';
+                  updateStockButtonStyles();
+                });
+              }
+            }
+          }, 100);
+
+          // 添加Bond按钮切换逻辑
+          setTimeout(() => {
+            const bondBuyBtn = document.getElementById('bondBuyBtn');
+            const bondSellBtn = document.getElementById('bondSellBtn');
+            
+            if (bondBuyBtn && bondSellBtn) {
+              let selectedBondOperation = 'buy';
+              
+              function updateBondButtonStyles() {
+                if (selectedBondOperation === 'buy') {
+                  bondBuyBtn.style.background = '#db0011';
+                  bondBuyBtn.style.color = '#fff';
+                  bondBuyBtn.style.border = 'none';
+                  bondBuyBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  bondSellBtn.style.background = '#fff';
+                  bondSellBtn.style.color = '#222';
+                  bondSellBtn.style.border = '1px solid #ddd';
+                  bondSellBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                } else {
+                  bondSellBtn.style.background = '#db0011';
+                  bondSellBtn.style.color = '#fff';
+                  bondSellBtn.style.border = 'none';
+                  bondSellBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  bondBuyBtn.style.background = '#fff';
+                  bondBuyBtn.style.color = '#222';
+                  bondBuyBtn.style.border = '1px solid #ddd';
+                  bondBuyBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                }
+              }
+              
+              bondBuyBtn.addEventListener('click', () => {
+                selectedBondOperation = 'buy';
+                updateBondButtonStyles();
+              });
+              
+              bondSellBtn.addEventListener('click', () => {
+                selectedBondOperation = 'sell';
+                updateBondButtonStyles();
+              });
+              
+              // 添加Bond Confirm和Clear按钮功能
+              const bondConfirmBtn = document.getElementById('bondConfirmBtn');
+              const bondClearBtn = document.getElementById('bondClearBtn');
+              const bondCodeInput = document.getElementById('bondCodeInput');
+              const bondAmountInput = document.getElementById('bondAmountInput');
+              const bondMaturityInput = document.getElementById('bondMaturityInput');
+              const bondTransactionDescription = document.getElementById('bondTransactionDescription');
+              
+              if (bondConfirmBtn) {
+                bondConfirmBtn.addEventListener('click', () => {
+                  const bondCode = bondCodeInput.value.trim();
+                  const amount = bondAmountInput.value;
+                  const maturity = bondMaturityInput.value;
+                  const operation = selectedBondOperation;
+                  const description = bondTransactionDescription.value;
+                  
+                  if (!bondCode) {
+                    alert('Please enter bond details (ISIN or name)');
+                    return;
+                  }
+                  if (!amount || parseFloat(amount) < 100) {
+                    alert('Please enter a valid face value amount (minimum $100)');
+                    return;
+                  }
+                  if (!maturity) {
+                    alert('Please select a maturity period');
+                    return;
+                  }
+                  
+                  console.log('Bond transaction:', {
+                    operation: operation,
+                    bondCode: bondCode,
+                    amount: parseFloat(amount),
+                    maturity: maturity + ' years',
+                    description: description || 'No description'
+                  });
+                  
+                  alert(`Bond ${operation} of $${amount} face value (${bondCode}, ${maturity} years maturity) confirmed!`);
+                });
+              }
+              
+              if (bondClearBtn) {
+                bondClearBtn.addEventListener('click', () => {
+                  bondCodeInput.value = '';
+                  bondAmountInput.value = '';
+                  bondMaturityInput.value = '';
+                  bondTransactionDescription.value = '';
+                  selectedBondOperation = 'buy';
+                  updateBondButtonStyles();
+                });
+              }
+            }
+          }, 100);
+
+          // 添加Other按钮切换逻辑
+          setTimeout(() => {
+            const otherAddBtn = document.getElementById('otherAddBtn');
+            const otherRemoveBtn = document.getElementById('otherRemoveBtn');
+            
+            if (otherAddBtn && otherRemoveBtn) {
+              let selectedOtherOperation = 'add';
+              
+              function updateOtherButtonStyles() {
+                if (selectedOtherOperation === 'add') {
+                  otherAddBtn.style.background = '#db0011';
+                  otherAddBtn.style.color = '#fff';
+                  otherAddBtn.style.border = 'none';
+                  otherAddBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  otherRemoveBtn.style.background = '#fff';
+                  otherRemoveBtn.style.color = '#222';
+                  otherRemoveBtn.style.border = '1px solid #ddd';
+                  otherRemoveBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                } else {
+                  otherRemoveBtn.style.background = '#db0011';
+                  otherRemoveBtn.style.color = '#fff';
+                  otherRemoveBtn.style.border = 'none';
+                  otherRemoveBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
+                  
+                  otherAddBtn.style.background = '#fff';
+                  otherAddBtn.style.color = '#222';
+                  otherAddBtn.style.border = '1px solid #ddd';
+                  otherAddBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                }
+              }
+              
+              otherAddBtn.addEventListener('click', () => {
+                selectedOtherOperation = 'add';
+                updateOtherButtonStyles();
+              });
+              
+              otherRemoveBtn.addEventListener('click', () => {
+                selectedOtherOperation = 'remove';
+                updateOtherButtonStyles();
+              });
+              
+              // 添加Other Confirm和Clear按钮功能
+              const otherConfirmBtn = document.getElementById('otherConfirmBtn');
+              const otherClearBtn = document.getElementById('otherClearBtn');
+              const otherAmountInput = document.getElementById('otherAmountInput');
+              const otherDescriptionInput = document.getElementById('otherDescriptionInput');
+              const otherTransactionDescription = document.getElementById('otherTransactionDescription');
+              
+              if (otherConfirmBtn) {
+                otherConfirmBtn.addEventListener('click', () => {
+                  const amount = otherAmountInput.value;
+                  const assetDescription = otherDescriptionInput.value.trim();
+                  const operation = selectedOtherOperation;
+                  const transactionDescription = otherTransactionDescription.value;
+                  
+                  if (!amount || parseFloat(amount) <= 0) {
+                    alert('Please enter a valid amount');
+                    return;
+                  }
+                  
+                  console.log('Other asset transaction:', {
+                    operation: operation,
+                    amount: parseFloat(amount),
+                    assetType: assetDescription || 'Other Asset',
+                    description: transactionDescription || 'No description'
+                  });
+                  
+                  const assetType = assetDescription ? ` (${assetDescription})` : '';
+                  alert(`Other asset ${operation} of $${amount}${assetType} confirmed!`);
+                });
+              }
+              
+              if (otherClearBtn) {
+                otherClearBtn.addEventListener('click', () => {
+                  otherAmountInput.value = '';
+                  otherDescriptionInput.value = '';
+                  otherTransactionDescription.value = '';
+                  selectedOtherOperation = 'add';
+                  updateOtherButtonStyles();
+                });
+              }
+            }
+          }, 100);
+
+          // 插入股票输入框（仅在Stock选中时显示）
+          const stockInputWrapper = document.createElement('div');
+          stockInputWrapper.id = 'stockInputWrapper';
+          stockInputWrapper.style.width = '100%';
+          stockInputWrapper.style.margin = '18px 0 0 0';
+          stockInputWrapper.style.display = 'none';
+          stockInputWrapper.style.height = '120px';
+          stockInputWrapper.style.display = 'flex';
+          stockInputWrapper.style.justifyContent = 'center';
+          stockInputWrapper.style.alignItems = 'center';
+          stockInputWrapper.style.flexDirection = 'column';
+          stockInputWrapper.style.transform = 'translate(300px, -280px)';
+          stockInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter stock symbol <span style='color:#1a233a;font-weight:500;'>(e.g., AAPL, TSLA)</span>
+            </div>
+            <input id="stockSymbolInput" type="text" placeholder="Stock Symbol" maxlength="10" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter quantity <span style='color:#1a233a;font-weight:500;'>(number of shares)</span>
+            </div>
+            <input id="stockQuantityInput" type="number" step="1" min="0" placeholder="Quantity" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="stockBuyBtn" style="padding:12px 20px;background:#db0011;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(219,0,17,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Buy +</button>
+              <button id="stockSellBtn" style="padding:12px 20px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Sell -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="stockTransactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:24px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+            <div style="display:flex;gap:16px;width:360%;max-width:520px;">
+              <button id="stockConfirmBtn" style="flex:1;padding:16px 24px;background:#db0011;color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(219,0,17,0.3);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Confirm</button>
+              <button id="stockClearBtn" style="flex:1;padding:16px 24px;background:#fff;color:#333;border:2px solid #ddd;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(0,0,0,0.1);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Clear</button>
+            </div>
+          `;
+          managePanel.appendChild(stockInputWrapper);
+
+          // 插入债券输入框（仅在Bond选中时显示）
+          const bondInputWrapper = document.createElement('div');
+          bondInputWrapper.id = 'bondInputWrapper';
+          bondInputWrapper.style.width = '100%';
+          bondInputWrapper.style.margin = '18px 0 0 0';
+          bondInputWrapper.style.display = 'none';
+          bondInputWrapper.style.height = '120px';
+          bondInputWrapper.style.display = 'flex';
+          bondInputWrapper.style.justifyContent = 'center';
+          bondInputWrapper.style.alignItems = 'center';
+          bondInputWrapper.style.flexDirection = 'column';
+          bondInputWrapper.style.transform = 'translate(300px, -280px)';
+          bondInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter bond details <span style='color:#1a233a;font-weight:500;'>(ISIN or Name)</span>
+            </div>
+            <input id="bondCodeInput" type="text" placeholder="e.g., US912828XG55 or Treasury Bond" maxlength="20" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Face value amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
+            </div>
+            <input id="bondAmountInput" type="number" step="100" min="100" placeholder="e.g., 1000, 5000, 10000" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Maturity period <span style='color:#1a233a;font-weight:500;'>(years)</span>
+            </div>
+            <select id="bondMaturityInput" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;background:white;">
+              <option value="">Select maturity</option>
+              <option value="1">1 Year</option>
+              <option value="2">2 Years</option>
+              <option value="5">5 Years</option>
+              <option value="10">10 Years</option>
+              <option value="20">20 Years</option>
+              <option value="30">30 Years</option>
+            </select>
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="bondBuyBtn" style="padding:12px 20px;background:#db0011;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(219,0,17,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Buy +</button>
+              <button id="bondSellBtn" style="padding:12px 20px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Sell -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="bondTransactionDescription" placeholder="Enter bond transaction details..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:24px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+            <div style="display:flex;gap:16px;width:360%;max-width:520px;">
+              <button id="bondConfirmBtn" style="flex:1;padding:16px 24px;background:#db0011;color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(219,0,17,0.3);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Confirm</button>
+              <button id="bondClearBtn" style="flex:1;padding:16px 24px;background:#fff;color:#333;border:2px solid #ddd;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(0,0,0,0.1);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Clear</button>
+            </div>
+          `;
+          managePanel.appendChild(bondInputWrapper);
+
+          // 插入其他资产输入框（仅在Other选中时显示）
+          const otherInputWrapper = document.createElement('div');
+          otherInputWrapper.id = 'otherInputWrapper';
+          otherInputWrapper.style.width = '100%';
+          otherInputWrapper.style.margin = '18px 0 0 0';
+          otherInputWrapper.style.display = 'none';
+          otherInputWrapper.style.height = '120px';
+          otherInputWrapper.style.display = 'flex';
+          otherInputWrapper.style.justifyContent = 'center';
+          otherInputWrapper.style.alignItems = 'center';
+          otherInputWrapper.style.flexDirection = 'column';
+          otherInputWrapper.style.transform = 'translate(300px, -280px)';
+          otherInputWrapper.innerHTML = `
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please enter the amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
+            </div>
+            <input id="otherAmountInput" type="number" step="0.01" min="0" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Asset description <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <input id="otherDescriptionInput" type="text" placeholder="e.g., Real Estate, Cryptocurrency, Commodity" maxlength="50" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
+            <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Please choose your operation
+            </div>
+            <div style="display:flex;gap:12px;">
+              <button id="otherAddBtn" style="padding:12px 20px;background:#db0011;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(219,0,17,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Add +</button>
+              <button id="otherRemoveBtn" style="padding:12px 20px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Remove -</button>
+            </div>
+            <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
+              Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
+            </div>
+            <textarea id="otherTransactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:24px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+            <div style="display:flex;gap:16px;width:360%;max-width:520px;">
+              <button id="otherConfirmBtn" style="flex:1;padding:16px 24px;background:#db0011;color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(219,0,17,0.3);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Confirm</button>
+              <button id="otherClearBtn" style="flex:1;padding:16px 24px;background:#fff;color:#333;border:2px solid #ddd;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(0,0,0,0.1);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Clear</button>
+            </div>
+          `;
+          managePanel.appendChild(otherInputWrapper);
+
+          manageHistoryPanel = document.createElement('div');
+          manageHistoryPanel.id = 'manageHistoryPanel';
+          manageHistoryPanel.style.width = '33%';
+          manageHistoryPanel.style.height = '900px'; // 480px*1.7 = 816px
+          manageHistoryPanel.style.background = '#fff';
+          manageHistoryPanel.style.borderRadius = '12px';
+          manageHistoryPanel.style.boxShadow = '0 2px 12px rgba(0,0,0,0.10)';
+          manageHistoryPanel.style.padding = '28px 32px 28px 32px';
+          manageHistoryPanel.style.marginLeft = 'auto';
+          manageHistoryPanel.style.display = 'flex';
+          manageHistoryPanel.style.flexDirection = 'column';
+          manageHistoryPanel.style.alignItems = 'flex-start';
+          manageHistoryPanel.innerHTML = `<div style="font-size:1.5rem;font-weight:700;color:#1a233a;margin-bottom:18px;">Asset Activity History</div>
+            <div style="width:100%;background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e5e7eb;">
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:2px solid #db0011;font-weight:600;color:#1a233a;font-size:14px;">
+                <span>Date</span>
+                <span>Type</span>
+                <span>Amount</span>
+                <span>Description</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;">
+                <span>2025-07-29</span>
+                <span style="color:#22c55e;font-weight:600;">Cash In</span>
+                <span style="color:#22c55e;font-weight:600;">+$5,000</span>
+                <span>Monthly salary deposit</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;">
+                <span>2025-07-28</span>
+                <span style="color:#db0011;font-weight:600;">Stock Buy</span>
+                <span style="color:#db0011;font-weight:600;">-$2,500</span>
+                <span>AAPL - 10 shares investment</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;">
+                <span>2025-07-27</span>
+                <span style="color:#db0011;font-weight:600;">Bond Buy</span>
+                <span style="color:#db0011;font-weight:600;">-$10,000</span>
+                <span>US Treasury Bond - 10 years maturity</span>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;font-size:13px;color:#374151;">
+                <span>2025-07-26</span>
+                <span style="color:#22c55e;font-weight:600;">Other Add</span>
+                <span style="color:#22c55e;font-weight:600;">+$50,000</span>
+                <span>Real Estate - Property investment</span>
+              </div>
+            </div>`;
+
+          manageWrapper.appendChild(managePanel);
+          manageWrapper.appendChild(manageHistoryPanel);
+          document.querySelector('.dashboard-container').appendChild(manageWrapper);
+
+          // 按钮选中样式逻辑
+          function updateManageBtnActive(selectedType) {
+            const btns = managePanel.querySelectorAll('.manage-btn');
+            btns.forEach(btn => {
+              if (btn.getAttribute('data-type') === selectedType) {
+                btn.style.background = '#db0011';
+                btn.style.color = '#fff';
+                btn.style.border = 'none';
+              } else {
+                btn.style.background = '#fff';
+                btn.style.color = '#222';
+                btn.style.border = 'none';
+              }
+              btn.style.padding = '12px 32px';
+              btn.style.borderRadius = '8px';
+              btn.style.fontSize = '20px';
+              btn.style.fontWeight = '600';
+              btn.style.cursor = 'pointer';
+              btn.style.textAlign = 'center';
+              btn.style.width = '100%';
+              btn.style.boxSizing = 'border-box';
               btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
-            };
+              btn.style.transition = 'box-shadow 0.18s, background 0.18s, color 0.18s';
+              btn.onmouseover = function() {
+                btn.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
+              };
+              btn.onmouseout = function() {
+                btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
+              };
+            });
+          }
+          // 默认选中第一个
+          let currentManageType = 'Cash';
+          updateManageBtnActive(currentManageType);
+          // 控制输入框显示逻辑
+          function updateInputVisibility(type) {
+            const cashWrapper = document.getElementById('cashInputWrapper');
+            const stockWrapper = document.getElementById('stockInputWrapper');
+            const bondWrapper = document.getElementById('bondInputWrapper');
+            const otherWrapper = document.getElementById('otherInputWrapper');
+            if (cashWrapper) cashWrapper.style.display = (type === 'Cash') ? 'block' : 'none';
+            if (stockWrapper) stockWrapper.style.display = (type === 'Stock') ? 'block' : 'none';
+            if (bondWrapper) bondWrapper.style.display = (type === 'Bond') ? 'block' : 'none';
+            if (otherWrapper) otherWrapper.style.display = (type === 'Other') ? 'block' : 'none';
+          }
+          updateInputVisibility(currentManageType);
+          managePanel.querySelectorAll('.manage-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+              currentManageType = btn.getAttribute('data-type');
+              updateManageBtnActive(currentManageType);
+              updateInputVisibility(currentManageType);
+            });
           });
-        }
-        // 默认选中第一个
-        let currentManageType = 'Cash';
-        updateManageBtnActive(currentManageType);
-        managePanel.querySelectorAll('.manage-btn').forEach(btn => {
-          btn.addEventListener('click', function() {
-            currentManageType = btn.getAttribute('data-type');
-            updateManageBtnActive(currentManageType);
-          });
-        });
-          document.querySelector('.dashboard-container').appendChild(managePanel);
         }
         function setTab(tab) {
           if (tab === 'performance') {
@@ -325,13 +913,15 @@
             manageBtn.classList.remove('active');
             if (dashboardMain) dashboardMain.style.display = '';
             if (headerRight) headerRight.style.display = '';
-            if (managePanel) managePanel.style.display = 'none';
+            const manageWrapper = document.getElementById('manageWrapper');
+            if (manageWrapper) manageWrapper.style.display = 'none';
           } else if (tab === 'manage') {
             perfBtn.classList.remove('active');
             manageBtn.classList.add('active');
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            if (managePanel) managePanel.style.display = 'flex';
+            const manageWrapper = document.getElementById('manageWrapper');
+            if (manageWrapper) manageWrapper.style.display = 'flex';
           }
         }
         perfBtn.addEventListener('click', function() {

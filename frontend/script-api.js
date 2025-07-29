@@ -57,9 +57,9 @@ async function fetchPortfolioData() {
     console.error('Error fetching portfolio data:', error);
     // Fallback to mock data
     return {
-      total_value: 12540.00,
-      gain_loss: 230.00,
-      gain_loss_percent: 1.87
+      total_value: 0,
+      gain_loss: 0,
+      gain_loss_percent: 0
     };
   }
 }
@@ -299,10 +299,10 @@ async function updateChart(range = '7d') {
 async function updatePortfolioHeader(range = '7d') {
   const portfolioData = await fetchPortfolioData();
   const performanceData = await fetchPerformanceData(range);
-  
+
   const portfolioValueElement = document.getElementById('portfolioValue');
   const portfolioGainElement = document.getElementById('portfolioGain');
-  
+
   // 根据隐私模式决定显示内容
   if (isPrivacyMode) {
     portfolioValueElement.style.visibility = 'visible';
@@ -338,15 +338,15 @@ async function createAllocationChart() {
   if (allocationDataCache) {
     const assetData = allocationDataCache;
     const ctx = document.getElementById('allocationChart').getContext('2d');
-    
+
     if (allocationChart) {
       allocationChart.destroy();
     }
-    
+
     const labels = assetData.map(item => item.asset_type);
     const values = assetData.map(item => Number(item.value));
     const colors = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
-    
+
     allocationChart = new Chart(ctx, {
       type: 'pie',
       data: {
@@ -402,26 +402,26 @@ async function createAllocationChart() {
           const chartArea = chart.chartArea;
           const centerX = (chartArea.left + chartArea.right) / 2;
           const centerY = (chartArea.top + chartArea.bottom) / 2;
-          
+
           chart.data.datasets.forEach((dataset, datasetIndex) => {
             const meta = chart.getDatasetMeta(datasetIndex);
             const total = dataset.data.reduce((a, b) => a + b, 0);
-            
+
             meta.data.forEach((arc, index) => {
               const angle = (arc.startAngle + arc.endAngle) / 2;
               const radius = arc.outerRadius;
               const labelRadius = radius + 25; // 减少标签距离
-              
+
               // 计算百分比
               const value = dataset.data[index];
               const percentage = Math.round((value / total) * 100);
-              
+
               // 在饼图扇形上显示百分比（如果扇形足够大）
               if (percentage >= 5) { // 只有大于等于30%才显示
                 const percentageRadius = radius * 0.7; // 百分比显示在扇形的70%位置
                 const percentageX = centerX + Math.cos(angle) * percentageRadius;
                 const percentageY = centerY + Math.sin(angle) * percentageRadius;
-                
+
                 ctx.save();
                 ctx.fillStyle = '#fff';
                 ctx.font = 'bold 14px Arial';
@@ -430,28 +430,28 @@ async function createAllocationChart() {
                 ctx.fillText(`${percentage}%`, percentageX, percentageY);
                 ctx.restore();
               }
-              
+
               // 计算标签位置
               const labelX = centerX + Math.cos(angle) * labelRadius;
               const labelY = centerY + Math.sin(angle) * labelRadius;
-              
+
               // 绘制标签（不绘制引线）
               const label = chart.data.labels[index];
-              
+
               ctx.save();
               ctx.fillStyle = '#222';
               ctx.font = 'bold 12px Arial';
               ctx.textAlign = 'center'; // 居中对齐，更简洁
               ctx.textBaseline = 'middle';
-              
+
               // 绘制资产类型标签
               ctx.fillText(label, labelX, labelY - 6);
-              
+
               // 绘制金额
               ctx.font = '11px Arial';
               ctx.fillStyle = '#666';
               ctx.fillText(`${formatMoney(value)}`, labelX, labelY + 6);
-              
+
               ctx.restore();
             });
           });
