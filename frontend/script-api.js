@@ -302,6 +302,7 @@ async function updatePortfolioHeader(range = '7d') {
 
   const portfolioValueElement = document.getElementById('portfolioValue');
   const portfolioGainElement = document.getElementById('portfolioGain');
+  
 
   // 根据隐私模式决定显示内容
   if (isPrivacyMode) {
@@ -658,7 +659,7 @@ async function updateSelectedAssetChart(range = '7d') {
             options: {
                 responsive: true,
                 animation: {
-                    duration: 1600,
+                    duration: 0,
                     easing: 'easeOutQuart',
                     animateScale: true,
                     animateRotate: true,
@@ -755,8 +756,8 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
         animation: {
           duration: 1600,
           easing: 'easeOutQuart',
-          animateScale: true,
-          animateRotate: true,
+          animateScale: false,
+          animateRotate: false,
         },
         plugins: {
           legend: { display: false },
