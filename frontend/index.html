@@ -252,10 +252,12 @@
         <div class="dashboard-nav" style="display:flex; flex-direction:row; gap:12px; margin-left:18px;">
           <button class="nav-btn nav-performance active">Performance</button>
           <button class="nav-btn nav-manage">Manage</button>
+          <button class="nav-btn nav-market">Market</button>
     <script>
       document.addEventListener('DOMContentLoaded', function() {
         const perfBtn = document.querySelector('.nav-performance');
         const manageBtn = document.querySelector('.nav-manage');
+        const marketBtn = document.querySelector('.nav-market');
         const dashboardMain = document.querySelector('.dashboard-main');
         const headerRight = document.querySelector('.header-right');
         // manage tab 按钮容器和右侧panel
@@ -267,39 +269,60 @@
           manageWrapper.id = 'manageWrapper';
           manageWrapper.style.display = 'none';
           manageWrapper.style.width = '100%';
-          manageWrapper.style.margin = '48px 0 0 0';
+          manageWrapper.style.height = '100vh';
+          manageWrapper.style.margin = '0';
+          manageWrapper.style.padding = '32px';
+          manageWrapper.style.boxSizing = 'border-box';
+          manageWrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
           manageWrapper.style.flexDirection = 'row';
           manageWrapper.style.alignItems = 'flex-start';
           manageWrapper.style.justifyContent = 'flex-start';
-          manageWrapper.style.gap = '38px';
+          manageWrapper.style.gap = '48px';
 
           managePanel = document.createElement('div');
           managePanel.id = 'managePanel';
-          managePanel.style.width = '170px';
+          managePanel.style.width = '200px';
+          managePanel.style.height = '900px';
+          managePanel.style.background = '#ffffff';
+          managePanel.style.borderRadius = '20px';
+          managePanel.style.padding = '32px 24px';
+          managePanel.style.boxShadow = '0 10px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)';
+          managePanel.style.border = '1px solid rgba(219,0,17,0.08)';
           managePanel.style.display = 'flex';
           managePanel.style.flexDirection = 'column';
-          managePanel.style.alignItems = 'flex-start';
+          managePanel.style.alignItems = 'center';
           managePanel.style.justifyContent = 'flex-start';
-          managePanel.style.gap = '18px';
+          managePanel.style.gap = '20px';
+          managePanel.style.position = 'relative';
+          managePanel.style.overflow = 'visible';
+          managePanel.style.minHeight = '900px';
           managePanel.innerHTML = `
-            <button class="manage-btn" data-type="Cash">Cash</button>
-            <button class="manage-btn" data-type="Stock">Stock</button>
-            <button class="manage-btn" data-type="Bond">Bond</button>
-            <button class="manage-btn" data-type="Other">Other</button>
+            <div style="text-align:center; margin-bottom:16px;">
+              <h2 style="font-size:24px; font-weight:700; color:#1a233a; margin:0 0 8px 0; letter-spacing:-0.5px;">Asset Management</h2>
+              <p style="font-size:14px; color:#6b7280; margin:0; font-weight:500;">Select an asset type to manage</p>
+            </div>
+            <div style="position:absolute; top:120px; left:50%; transform:translateX(-50%); display:flex; flex-direction:column; gap:20px; width:80%;">
+              <button class="manage-btn" data-type="Cash">💰 Cash</button>
+              <button class="manage-btn" data-type="Stock">📈 Stock</button>
+              <button class="manage-btn" data-type="Bond">🏛️ Bond</button>
+              <button class="manage-btn" data-type="Other">🔗 Other</button>
+            </div>
           `;
 
           // 插入输入框（仅在Cash选中时显示）
           const cashInputWrapper = document.createElement('div');
           cashInputWrapper.id = 'cashInputWrapper';
           cashInputWrapper.style.width = '100%';
-          cashInputWrapper.style.margin = '18px 0 0 0';
+          cashInputWrapper.style.margin = '20px 0 0 0';
           cashInputWrapper.style.display = 'none';
-          cashInputWrapper.style.height = '120px';
+          cashInputWrapper.style.height = 'auto';
           cashInputWrapper.style.display = 'flex';
           cashInputWrapper.style.justifyContent = 'center';
           cashInputWrapper.style.alignItems = 'center';
           cashInputWrapper.style.flexDirection = 'column';
-          cashInputWrapper.style.transform = 'translate(300px, -280px)';
+          cashInputWrapper.style.position = 'absolute';
+          cashInputWrapper.style.left = '280px';
+          cashInputWrapper.style.top = '0px';
           cashInputWrapper.innerHTML = `
             <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
               Please enter the amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
@@ -678,14 +701,16 @@
           const stockInputWrapper = document.createElement('div');
           stockInputWrapper.id = 'stockInputWrapper';
           stockInputWrapper.style.width = '100%';
-          stockInputWrapper.style.margin = '18px 0 0 0';
+          stockInputWrapper.style.margin = '20px 0 0 0';
           stockInputWrapper.style.display = 'none';
-          stockInputWrapper.style.height = '120px';
+          stockInputWrapper.style.height = 'auto';
           stockInputWrapper.style.display = 'flex';
           stockInputWrapper.style.justifyContent = 'center';
           stockInputWrapper.style.alignItems = 'center';
           stockInputWrapper.style.flexDirection = 'column';
-          stockInputWrapper.style.transform = 'translate(300px, -280px)';
+          stockInputWrapper.style.position = 'absolute';
+          stockInputWrapper.style.left = '280px';
+          stockInputWrapper.style.top = '0px';
           stockInputWrapper.innerHTML = `
             <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
               Please enter stock symbol <span style='color:#1a233a;font-weight:500;'>(e.g., AAPL, TSLA)</span>
@@ -717,14 +742,16 @@
           const bondInputWrapper = document.createElement('div');
           bondInputWrapper.id = 'bondInputWrapper';
           bondInputWrapper.style.width = '100%';
-          bondInputWrapper.style.margin = '18px 0 0 0';
+          bondInputWrapper.style.margin = '20px 0 0 0';
           bondInputWrapper.style.display = 'none';
-          bondInputWrapper.style.height = '120px';
+          bondInputWrapper.style.height = 'auto';
           bondInputWrapper.style.display = 'flex';
           bondInputWrapper.style.justifyContent = 'center';
           bondInputWrapper.style.alignItems = 'center';
           bondInputWrapper.style.flexDirection = 'column';
-          bondInputWrapper.style.transform = 'translate(300px, -280px)';
+          bondInputWrapper.style.position = 'absolute';
+          bondInputWrapper.style.left = '280px';
+          bondInputWrapper.style.top = '0px';
           bondInputWrapper.innerHTML = `
             <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
               Please enter bond details <span style='color:#1a233a;font-weight:500;'>(ISIN or Name)</span>
@@ -768,14 +795,16 @@
           const otherInputWrapper = document.createElement('div');
           otherInputWrapper.id = 'otherInputWrapper';
           otherInputWrapper.style.width = '100%';
-          otherInputWrapper.style.margin = '18px 0 0 0';
+          otherInputWrapper.style.margin = '20px 0 0 0';
           otherInputWrapper.style.display = 'none';
-          otherInputWrapper.style.height = '120px';
+          otherInputWrapper.style.height = 'auto';
           otherInputWrapper.style.display = 'flex';
           otherInputWrapper.style.justifyContent = 'center';
           otherInputWrapper.style.alignItems = 'center';
           otherInputWrapper.style.flexDirection = 'column';
-          otherInputWrapper.style.transform = 'translate(300px, -280px)';
+          otherInputWrapper.style.position = 'absolute';
+          otherInputWrapper.style.left = '280px';
+          otherInputWrapper.style.top = '0px';
           otherInputWrapper.innerHTML = `
             <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
               Please enter the amount <span style='color:#1a233a;font-weight:500;'>(unit: USD)</span>
@@ -805,47 +834,64 @@
 
           manageHistoryPanel = document.createElement('div');
           manageHistoryPanel.id = 'manageHistoryPanel';
-          manageHistoryPanel.style.width = '33%';
-          manageHistoryPanel.style.height = '900px'; // 480px*1.7 = 816px
-          manageHistoryPanel.style.background = '#fff';
-          manageHistoryPanel.style.borderRadius = '12px';
-          manageHistoryPanel.style.boxShadow = '0 2px 12px rgba(0,0,0,0.10)';
-          manageHistoryPanel.style.padding = '28px 32px 28px 32px';
+          manageHistoryPanel.style.width = '40%';
+          manageHistoryPanel.style.minHeight = '900px';
+          manageHistoryPanel.style.background = '#ffffff';
+          manageHistoryPanel.style.borderRadius = '20px';
+          manageHistoryPanel.style.boxShadow = '0 10px 40px rgba(0,0,0,0.08), 0 2px 8px rgba(0,0,0,0.04)';
+          manageHistoryPanel.style.border = '1px solid rgba(219,0,17,0.08)';
+          manageHistoryPanel.style.padding = '32px';
           manageHistoryPanel.style.marginLeft = 'auto';
           manageHistoryPanel.style.display = 'flex';
           manageHistoryPanel.style.flexDirection = 'column';
           manageHistoryPanel.style.alignItems = 'flex-start';
-          manageHistoryPanel.innerHTML = `<div style="font-size:1.5rem;font-weight:700;color:#1a233a;margin-bottom:18px;">Asset Activity History</div>
-            <div style="width:100%;background:#f8fafc;border-radius:8px;padding:16px;border:1px solid #e5e7eb;">
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:2px solid #db0011;font-weight:600;color:#1a233a;font-size:14px;">
-                <span>Date</span>
-                <span>Type</span>
-                <span>Amount</span>
-                <span>Description</span>
+          manageHistoryPanel.innerHTML = `
+            <div style="text-align:left; margin-bottom:28px;">
+              <h2 style="font-size:28px; font-weight:700; color:#1a233a; margin:0 0 8px 0; letter-spacing:-0.5px; display:flex; align-items:center; gap:12px;">
+                📊 <span>Asset Activity History</span>
+              </h2>
+              <p style="font-size:16px; color:#6b7280; margin:0; font-weight:500;">Track all your portfolio transactions</p>
+            </div>
+            <div style="width:91%; background:linear-gradient(135deg, #f8fafc 0%, #ffffff 100%); border-radius:16px; padding:24px; border:1px solid #e5e7eb; box-shadow:0 4px 20px rgba(0,0,0,0.04);">
+              <div style="width:91%; padding:20px; border-bottom:2px solid #f1f5f9; font-size:14px; color:#374151; background:#ffffff; border-radius:8px; margin-bottom:12px; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.background='#f8fafc'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.background='#ffffff'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.02)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="display:flex; align-items:center; gap:20px;">
+                    <span style="font-weight:600;">📅 2025-07-29</span>
+                    <span style="color:#22c55e; font-weight:700; background:#dcfce7; padding:4px 12px; border-radius:20px; font-size:12px; text-align:center;">💵 Cash In</span>
+                    <span style="color:#22c55e; font-weight:700; font-size:15px;">💰 +$5,000</span>
+                  </div>
+                </div>
+                <div style="color:#6b7280; font-size:13px; padding-left:4px;">📝 Monthly salary deposit</div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;">
-                <span>2025-07-29</span>
-                <span style="color:#22c55e;font-weight:600;">Cash In</span>
-                <span style="color:#22c55e;font-weight:600;">+$5,000</span>
-                <span>Monthly salary deposit</span>
+              <div style="width:91%; padding:20px; border-bottom:2px solid #f1f5f9; font-size:14px; color:#374151; background:#ffffff; border-radius:8px; margin-bottom:12px; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.background='#f8fafc'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.background='#ffffff'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.02)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="display:flex; align-items:center; gap:20px;">
+                    <span style="font-weight:600;">📅 2025-07-28</span>
+                    <span style="color:#db0011; font-weight:700; background:#fee2e2; padding:4px 12px; border-radius:20px; font-size:12px; text-align:center;">📈 Stock Buy</span>
+                    <span style="color:#db0011; font-weight:700; font-size:15px;">💰 -$2,500</span>
+                  </div>
+                </div>
+                <div style="color:#6b7280; font-size:13px; padding-left:4px;">📝 AAPL - 10 shares investment</div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;">
-                <span>2025-07-28</span>
-                <span style="color:#db0011;font-weight:600;">Stock Buy</span>
-                <span style="color:#db0011;font-weight:600;">-$2,500</span>
-                <span>AAPL - 10 shares investment</span>
+              <div style="width:91%; padding:20px; border-bottom:2px solid #f1f5f9; font-size:14px; color:#374151; background:#ffffff; border-radius:8px; margin-bottom:12px; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.background='#f8fafc'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.background='#ffffff'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.02)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="display:flex; align-items:center; gap:20px;">
+                    <span style="font-weight:600;">📅 2025-07-27</span>
+                    <span style="color:#db0011; font-weight:700; background:#fee2e2; padding:4px 12px; border-radius:20px; font-size:12px; text-align:center;">🏛️ Bond Buy</span>
+                    <span style="color:#db0011; font-weight:700; font-size:15px;">💰 -$10,000</span>
+                  </div>
+                </div>
+                <div style="color:#6b7280; font-size:13px; padding-left:4px;">📝 US Treasury Bond - 10 years maturity</div>
               </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;border-bottom:1px solid #e5e7eb;font-size:13px;color:#374151;">
-                <span>2025-07-27</span>
-                <span style="color:#db0011;font-weight:600;">Bond Buy</span>
-                <span style="color:#db0011;font-weight:600;">-$10,000</span>
-                <span>US Treasury Bond - 10 years maturity</span>
-              </div>
-              <div style="display:grid;grid-template-columns:1fr 1fr 1fr 2fr;gap:12px;padding:12px 0;font-size:13px;color:#374151;">
-                <span>2025-07-26</span>
-                <span style="color:#22c55e;font-weight:600;">Other Add</span>
-                <span style="color:#22c55e;font-weight:600;">+$50,000</span>
-                <span>Real Estate - Property investment</span>
+              <div style="width:91%; padding:20px; font-size:14px; color:#374151; background:#ffffff; border-radius:8px; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.02);" onmouseover="this.style.background='#f8fafc'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.background='#ffffff'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.02)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="display:flex; align-items:center; gap:20px;">
+                    <span style="font-weight:600;">📅 2025-07-26</span>
+                    <span style="color:#22c55e; font-weight:700; background:#dcfce7; padding:4px 12px; border-radius:20px; font-size:12px; text-align:center;">🔗 Other Add</span>
+                    <span style="color:#22c55e; font-weight:700; font-size:15px;">💰 +$50,000</span>
+                  </div>
+                </div>
+                <div style="color:#6b7280; font-size:13px; padding-left:4px;">📝 Real Estate - Property investment</div>
               </div>
             </div>`;
 
@@ -857,30 +903,45 @@
           function updateManageBtnActive(selectedType) {
             const btns = managePanel.querySelectorAll('.manage-btn');
             btns.forEach(btn => {
+              // 使用与顶部导航相同的样式
+              btn.style.background = '#fff';
+              btn.style.color = '#222';
+              btn.style.border = '1px solid #eee';
+              btn.style.borderRadius = '8px';
+              btn.style.padding = '14px 0';
+              btn.style.width = '100%';
+              btn.style.fontSize = '1.12rem';
+              btn.style.fontWeight = '700';
+              btn.style.letterSpacing = '0.5px';
+              btn.style.boxSizing = 'border-box';
+              btn.style.cursor = 'pointer';
+              btn.style.transition = 'background 0.2s, color 0.2s';
+              btn.style.textAlign = 'center';
+              btn.style.outline = 'none';
+              btn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.08)';
+              
               if (btn.getAttribute('data-type') === selectedType) {
+                // 选中状态：与 nav-btn.active 相同
                 btn.style.background = '#db0011';
                 btn.style.color = '#fff';
-                btn.style.border = 'none';
-              } else {
-                btn.style.background = '#fff';
-                btn.style.color = '#222';
-                btn.style.border = 'none';
+                btn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.18)';
               }
-              btn.style.padding = '12px 32px';
-              btn.style.borderRadius = '8px';
-              btn.style.fontSize = '20px';
-              btn.style.fontWeight = '600';
-              btn.style.cursor = 'pointer';
-              btn.style.textAlign = 'center';
-              btn.style.width = '100%';
-              btn.style.boxSizing = 'border-box';
-              btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
-              btn.style.transition = 'box-shadow 0.18s, background 0.18s, color 0.18s';
+              
               btn.onmouseover = function() {
-                btn.style.boxShadow = '0 8px 28px rgba(0,0,0,0.18)';
+                if (btn.getAttribute('data-type') !== selectedType) {
+                  btn.style.background = '#f5f5f5';
+                }
               };
               btn.onmouseout = function() {
-                btn.style.boxShadow = '0 4px 16px rgba(0,0,0,0.13)';
+                if (btn.getAttribute('data-type') === selectedType) {
+                  btn.style.background = '#db0011';
+                  btn.style.color = '#fff';
+                  btn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.18)';
+                } else {
+                  btn.style.background = '#fff';
+                  btn.style.color = '#222';
+                  btn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.08)';
+                }
               };
             });
           }
@@ -907,21 +968,140 @@
             });
           });
         }
+        
+        // 创建Market页面
+        function createMarketPage() {
+          let marketWrapper = document.getElementById('marketWrapper');
+          if (!marketWrapper) {
+            marketWrapper = document.createElement('div');
+            marketWrapper.id = 'marketWrapper';
+            marketWrapper.style.display = 'none';
+            marketWrapper.style.width = '100%';
+            marketWrapper.style.height = '100vh';
+            marketWrapper.style.padding = '24px';
+            marketWrapper.style.boxSizing = 'border-box';
+            marketWrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
+            
+            marketWrapper.innerHTML = `
+              <div style="display:flex; width:100%; height:100%; gap:24px;">
+                <!-- 左侧 7/10 区域 -->
+                <div style="flex:7; display:flex; flex-direction:column; gap:20px; height:100%;">
+                  <!-- 上半部分：涨势最猛的前10支股票 (高度1.5倍) -->
+                  <div style="height:360px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                      <h3 style="font-size:22px; font-weight:700; color:#1a233a; margin:0; display:flex; align-items:center; gap:8px;">
+                        📈 <span>Top Gainers</span>
+                      </h3>
+                      <select id="gainersTimeRange" style="padding:8px 16px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-weight:500; background:#fff; cursor:pointer;">
+                        <option value="1d">Today</option>
+                        <option value="3d">3 Days</option>
+                        <option value="7d">7 Days</option>
+                      </select>
+                    </div>
+                    <div id="topGainersList" style="height:280px; overflow-y:auto;">
+                      <div style="display:grid; grid-template-columns:60px 1fr 120px 120px 80px; gap:16px; padding:12px 16px; background:#f8fafc; border-radius:8px; font-weight:600; color:#6b7280; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                        <span>Rank</span>
+                        <span>Symbol</span>
+                        <span>Price</span>
+                        <span>Change</span>
+                        <span>Action</span>
+                      </div>
+                      <div id="gainersData">
+                        <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
+                          <div style="margin-bottom:12px;">📊</div>
+                          Loading top gainers...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- 下半部分：跌势最猛的前10支股票 (高度1.5倍) -->
+                  <div style="height:360px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+                      <h3 style="font-size:22px; font-weight:700; color:#1a233a; margin:0; display:flex; align-items:center; gap:8px;">
+                        📉 <span>Top Losers</span>
+                      </h3>
+                      <select id="losersTimeRange" style="padding:8px 16px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-weight:500; background:#fff; cursor:pointer;">
+                        <option value="1d">Today</option>
+                        <option value="3d">3 Days</option>
+                        <option value="7d">7 Days</option>
+                      </select>
+                    </div>
+                    <div id="topLosersList" style="height:280px; overflow-y:auto;">
+                      <div style="display:grid; grid-template-columns:60px 1fr 120px 120px 80px; gap:16px; padding:12px 16px; background:#f8fafc; border-radius:8px; font-weight:600; color:#6b7280; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">
+                        <span>Rank</span>
+                        <span>Symbol</span>
+                        <span>Price</span>
+                        <span>Change</span>
+                        <span>Action</span>
+                      </div>
+                      <div id="losersData">
+                        <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
+                          <div style="margin-bottom:12px;">📊</div>
+                          Loading top losers...
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- 右侧 3/10 区域：推荐买卖建议 (高度1.5倍) -->
+                <div style="flex:3; height:780px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
+                  <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
+                    💡 <span>Trading Recommendations</span>
+                  </h3>
+                  <div id="tradingRecommendations" style="height:700px; overflow-y:auto; padding-right:8px;">
+                    <div id="recommendationsData" style="display:flex; flex-direction:column; gap:16px;">
+                      <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
+                        <div style="margin-bottom:12px;">🤖</div>
+                        Loading recommendations...
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `;
+            
+            document.querySelector('.dashboard-container').appendChild(marketWrapper);
+          }
+          return marketWrapper;
+        }
         function setTab(tab) {
+          const marketWrapper = document.getElementById('marketWrapper');
+          
           if (tab === 'performance') {
             perfBtn.classList.add('active');
             manageBtn.classList.remove('active');
+            marketBtn.classList.remove('active');
             if (dashboardMain) dashboardMain.style.display = '';
             if (headerRight) headerRight.style.display = '';
             const manageWrapper = document.getElementById('manageWrapper');
             if (manageWrapper) manageWrapper.style.display = 'none';
+            if (marketWrapper) marketWrapper.style.display = 'none';
           } else if (tab === 'manage') {
             perfBtn.classList.remove('active');
             manageBtn.classList.add('active');
+            marketBtn.classList.remove('active');
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
             const manageWrapper = document.getElementById('manageWrapper');
             if (manageWrapper) manageWrapper.style.display = 'flex';
+            if (marketWrapper) marketWrapper.style.display = 'none';
+          } else if (tab === 'market') {
+            perfBtn.classList.remove('active');
+            manageBtn.classList.remove('active');
+            marketBtn.classList.add('active');
+            if (dashboardMain) dashboardMain.style.display = 'none';
+            if (headerRight) headerRight.style.display = 'none';
+            const manageWrapper = document.getElementById('manageWrapper');
+            if (manageWrapper) manageWrapper.style.display = 'none';
+            
+            // 创建并显示Market页面
+            const market = createMarketPage();
+            market.style.display = 'block';
+            
+            // 加载市场数据
+            loadMarketData();
           }
         }
         perfBtn.addEventListener('click', function() {
@@ -929,6 +1109,9 @@
         });
         manageBtn.addEventListener('click', function() {
           setTab('manage');
+        });
+        marketBtn.addEventListener('click', function() {
+          setTab('market');
         });
         setTab('performance');
       });
@@ -1154,6 +1337,518 @@
       }
     }
     fetchAAPLPrice();
+
+    // Market页面数据加载函数
+    async function loadMarketData() {
+      await Promise.all([
+        loadTopGainers(),
+        loadTopLosers(),
+        loadTradingRecommendations()
+      ]);
+      
+      // 添加时间范围选择器事件监听
+      const gainersSelect = document.getElementById('gainersTimeRange');
+      const losersSelect = document.getElementById('losersTimeRange');
+      
+      if (gainersSelect) {
+        gainersSelect.addEventListener('change', loadTopGainers);
+      }
+      if (losersSelect) {
+        losersSelect.addEventListener('change', loadTopLosers);
+      }
+    }
+
+    // 加载涨幅榜数据
+    async function loadTopGainers() {
+      const container = document.getElementById('gainersData');
+      if (!container) return;
+      
+      const timeRange = document.getElementById('gainersTimeRange')?.value || '1d';
+      
+      try {
+        // 调用后端API
+        const response = await fetch(`/api/market/top-gainers?timeRange=${timeRange}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          renderStockList(container, data.stocks, 'gainer');
+        } else {
+          throw new Error('Failed to fetch gainers');
+        }
+      } catch (error) {
+        console.error('Error loading top gainers:', error);
+        // 显示模拟数据
+        const mockData = generateMockGainers();
+        renderStockList(container, mockData, 'gainer');
+      }
+    }
+
+    // 加载跌幅榜数据
+    async function loadTopLosers() {
+      const container = document.getElementById('losersData');
+      if (!container) return;
+      
+      const timeRange = document.getElementById('losersTimeRange')?.value || '1d';
+      
+      try {
+        // 调用后端API
+        const response = await fetch(`/api/market/top-losers?timeRange=${timeRange}`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          renderStockList(container, data.stocks, 'loser');
+        } else {
+          throw new Error('Failed to fetch losers');
+        }
+      } catch (error) {
+        console.error('Error loading top losers:', error);
+        // 显示模拟数据
+        const mockData = generateMockLosers();
+        renderStockList(container, mockData, 'loser');
+      }
+    }
+
+    // 加载交易推荐
+    async function loadTradingRecommendations() {
+      const container = document.getElementById('tradingRecommendations');
+      if (!container) return;
+      
+      try {
+        // 调用后端API获取推荐数据
+        const response = await fetch('/api/market/recommendations');
+        
+        if (response.ok) {
+          const data = await response.json();
+          // 假设后端返回的数据结构是一个包含recommendations数组的对象
+          // 数据格式: { recommendations: [{ symbol: "BABA", recommendation: { period: "0m", strongBuy: 8, buy: 30, hold: 3, sell: 0, strongSell: 0 } }, ...] }
+          renderTradingRecommendations(container, data.recommendations || data);
+        } else {
+          throw new Error('Failed to fetch recommendations');
+        }
+      } catch (error) {
+        console.error('Error loading recommendations:', error);
+        // 显示模拟数据
+        const mockData = generateMockRecommendations();
+        renderTradingRecommendations(container, mockData);
+      }
+    }
+
+    // 渲染股票列表
+    function renderStockList(container, stocks, type) {
+      container.innerHTML = '';
+      
+      stocks.forEach((stock, index) => {
+        const row = document.createElement('div');
+        row.className = 'market-stock-row';
+        row.style.cssText = `
+          display: grid;
+          grid-template-columns: 60px 1fr 120px 120px 80px;
+          gap: 16px;
+          padding: 16px;
+          border-radius: 8px;
+          margin-bottom: 8px;
+          transition: all 0.2s;
+          border: 1px solid #f3f4f6;
+        `;
+        
+        const changeColor = type === 'gainer' ? '#10b981' : '#ef4444';
+        const changePrefix = type === 'gainer' ? '+' : '';
+        
+        row.innerHTML = `
+          <span style="font-weight: 600; color: #6b7280;">#${index + 1}</span>
+          <span class="market-stock-symbol" style="font-weight: 700; color: #1f2937; cursor: pointer;">${stock.symbol}</span>
+          <span style="font-weight: 600; color: #374151;">$${stock.price.toFixed(2)}</span>
+          <span style="font-weight: 700; color: ${changeColor};">${changePrefix}${stock.change.toFixed(2)}%</span>
+          <button style="
+            padding: 4px 8px;
+            background: #f3f4f6;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s;
+          " onclick="addToFeatured('${stock.symbol}')">Add</button>
+        `;
+        
+        // 添加hover效果
+        row.addEventListener('mouseenter', function() {
+          this.style.backgroundColor = '#f8fafc';
+          this.style.borderColor = '#e5e7eb';
+        });
+        
+        row.addEventListener('mouseleave', function() {
+          this.style.backgroundColor = 'transparent';
+          this.style.borderColor = '#f3f4f6';
+        });
+        
+        container.appendChild(row);
+      });
+    }
+
+    // 渲染交易推荐
+    function renderTradingRecommendations(container, recommendations) {
+      const recommendationsData = document.getElementById('recommendationsData');
+      if (!recommendationsData) return;
+      
+      recommendationsData.innerHTML = '';
+      
+      recommendations.forEach((rec, index) => {
+        const card = document.createElement('div');
+        card.className = 'recommendation-card';
+        card.style.cssText = `
+          background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 18px;
+          margin-bottom: 16px;
+          transition: all 0.3s;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        `;
+        
+        // 计算主要推荐类型
+        const recommendations_data = rec.recommendation;
+        const strongBuy = recommendations_data.strongBuy || 0;
+        const buy = recommendations_data.buy || 0;
+        const hold = recommendations_data.hold || 0;
+        const sell = recommendations_data.sell || 0;
+        const strongSell = recommendations_data.strongSell || 0;
+        
+        // 找出最高的推荐类型
+        const maxValue = Math.max(strongBuy, buy, hold, sell, strongSell);
+        let primaryAction = 'HOLD';
+        let actionColor = '#6b7280';
+        let actionIcon = '⚖️';
+        
+        if (maxValue === strongBuy && strongBuy > 0) {
+          primaryAction = 'STRONG BUY';
+          actionColor = '#059669';
+          actionIcon = '🚀';
+        } else if (maxValue === buy && buy > 0) {
+          primaryAction = 'BUY';
+          actionColor = '#10b981';
+          actionIcon = '📈';
+        } else if (maxValue === hold && hold > 0) {
+          primaryAction = 'HOLD';
+          actionColor = '#6b7280';
+          actionIcon = '⚖️';
+        } else if (maxValue === sell && sell > 0) {
+          primaryAction = 'SELL';
+          actionColor = '#ef4444';
+          actionIcon = '�';
+        } else if (maxValue === strongSell && strongSell > 0) {
+          primaryAction = 'STRONG SELL';
+          actionColor = '#dc2626';
+          actionIcon = '⬇️';
+        }
+        
+        const totalRecommendations = strongBuy + buy + hold + sell + strongSell;
+        
+        card.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 700; color: #1f2937; font-size: 18px;">${rec.symbol}</span>
+              <span style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 2px 6px; border-radius: 4px;">#${index + 1}</span>
+            </div>
+            <span style="
+              background: ${actionColor};
+              color: white;
+              padding: 6px 12px;
+              border-radius: 8px;
+              font-size: 12px;
+              font-weight: 600;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            ">${actionIcon} ${primaryAction}</span>
+          </div>
+          
+          <div style="margin-bottom: 16px;">
+            <div style="color: #374151; font-size: 14px; font-weight: 600; margin-bottom: 8px;">
+              Analyst Recommendations (Total: ${totalRecommendations})
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+              ${strongBuy > 0 ? `<div style="display: flex; justify-content: space-between; color: #059669;"><span>🚀 Strong Buy:</span><span style="font-weight: 600;">${strongBuy}</span></div>` : ''}
+              ${buy > 0 ? `<div style="display: flex; justify-content: space-between; color: #10b981;"><span>📈 Buy:</span><span style="font-weight: 600;">${buy}</span></div>` : ''}
+              ${hold > 0 ? `<div style="display: flex; justify-content: space-between; color: #6b7280;"><span>⚖️ Hold:</span><span style="font-weight: 600;">${hold}</span></div>` : ''}
+              ${sell > 0 ? `<div style="display: flex; justify-content: space-between; color: #ef4444;"><span>📉 Sell:</span><span style="font-weight: 600;">${sell}</span></div>` : ''}
+              ${strongSell > 0 ? `<div style="display: flex; justify-content: space-between; color: #dc2626;"><span>⬇️ Strong Sell:</span><span style="font-weight: 600;">${strongSell}</span></div>` : ''}
+            </div>
+          </div>
+          
+          <div style="background: rgba(219,0,17,0.05); padding: 12px; border-radius: 8px; border-left: 3px solid #db0011;">
+            <div style="color: #db0011; font-size: 12px; font-weight: 600; margin-bottom: 4px;">System Recommendation</div>
+            <div style="color: #6b7280; font-size: 12px; line-height: 1.4;">
+              Based on ${totalRecommendations} analyst recommendations, <strong>${rec.symbol}</strong> shows ${primaryAction.toLowerCase()} signals with ${maxValue} analysts supporting this position.
+            </div>
+          </div>
+        `;
+        
+        // 添加hover效果
+        card.addEventListener('mouseenter', function() {
+          this.style.backgroundColor = '#ffffff';
+          this.style.borderColor = '#d1d5db';
+          this.style.transform = 'translateY(-2px)';
+          this.style.boxShadow = '0 8px 25px rgba(0,0,0,0.12)';
+        });
+        
+        card.addEventListener('mouseleave', function() {
+          this.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
+          this.style.borderColor = '#e5e7eb';
+          this.style.transform = 'translateY(0)';
+          this.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)';
+        });
+        
+        // 添加点击查看详情功能
+        card.addEventListener('click', function() {
+          showRecommendationDetails(rec);
+        });
+        card.style.cursor = 'pointer';
+        
+        recommendationsData.appendChild(card);
+      });
+    }
+
+    // 显示推荐详情
+    function showRecommendationDetails(rec) {
+      const modal = document.createElement('div');
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+      `;
+      
+      const content = document.createElement('div');
+      content.style.cssText = `
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        max-height: 80%;
+        overflow-y: auto;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      `;
+      
+      const recommendations_data = rec.recommendation;
+      const strongBuy = recommendations_data.strongBuy || 0;
+      const buy = recommendations_data.buy || 0;
+      const hold = recommendations_data.hold || 0;
+      const sell = recommendations_data.sell || 0;
+      const strongSell = recommendations_data.strongSell || 0;
+      const total = strongBuy + buy + hold + sell + strongSell;
+      
+      content.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h3 style="font-size: 20px; font-weight: 700; color: #1f2937; margin: 0;">${rec.symbol} Recommendation Details</h3>
+          <button onclick="this.closest('.modal').remove()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        
+        <div style="margin-bottom: 20px;">
+          <h4 style="font-size: 16px; font-weight: 600; color: #374151; margin-bottom: 12px;">Analyst Breakdown (Total: ${total})</h4>
+          <div style="space-y: 8px;">
+            <div style="display: flex; justify-content: space-between; padding: 8px; border-radius: 6px; background: #f0fdf4;">
+              <span>🚀 Strong Buy:</span>
+              <span style="font-weight: 600; color: #059669;">${strongBuy} (${total > 0 ? (strongBuy/total*100).toFixed(1) : 0}%)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 8px; border-radius: 6px; background: #ecfdf5;">
+              <span>📈 Buy:</span>
+              <span style="font-weight: 600; color: #10b981;">${buy} (${total > 0 ? (buy/total*100).toFixed(1) : 0}%)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 8px; border-radius: 6px; background: #f9fafb;">
+              <span>⚖️ Hold:</span>
+              <span style="font-weight: 600; color: #6b7280;">${hold} (${total > 0 ? (hold/total*100).toFixed(1) : 0}%)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 8px; border-radius: 6px; background: #fef2f2;">
+              <span>📉 Sell:</span>
+              <span style="font-weight: 600; color: #ef4444;">${sell} (${total > 0 ? (sell/total*100).toFixed(1) : 0}%)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; padding: 8px; border-radius: 6px; background: #fef2f2;">
+              <span>⬇️ Strong Sell:</span>
+              <span style="font-weight: 600; color: #dc2626;">${strongSell} (${total > 0 ? (strongSell/total*100).toFixed(1) : 0}%)</span>
+            </div>
+          </div>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 16px; border-radius: 8px; border-left: 4px solid #db0011;">
+          <h4 style="font-size: 14px; font-weight: 600; color: #db0011; margin: 0 0 8px 0;">Investment Recommendation</h4>
+          <p style="color: #6b7280; font-size: 13px; line-height: 1.5; margin: 0;">
+            Based on comprehensive analyst coverage, this recommendation reflects current market sentiment and technical analysis. 
+            Please conduct your own research before making investment decisions.
+          </p>
+        </div>
+      `;
+      
+      modal.className = 'modal';
+      modal.appendChild(content);
+      document.body.appendChild(modal);
+      
+      // 点击外部关闭模态框
+      modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+          modal.remove();
+        }
+      });
+    }
+
+    // 添加到Featured Stocks
+    async function addToFeatured(symbol) {
+      try {
+        const result = await addFeaturedStock(symbol);
+        if (result.error) {
+          alert(result.error);
+        } else {
+          alert(`${symbol} added to featured stocks!`);
+          // 刷新featured stocks列表
+          await loadStocks();
+        }
+      } catch (error) {
+        alert('Failed to add stock to featured list');
+      }
+    }
+
+    // 生成模拟涨幅榜数据
+    function generateMockGainers() {
+      const symbols = ['NVDA', 'TSLA', 'AMZN', 'GOOGL', 'MSFT', 'META', 'NFLX', 'AMD', 'CRM', 'PYPL'];
+      return symbols.map((symbol, index) => ({
+        symbol,
+        price: 150 + Math.random() * 200,
+        change: 2 + Math.random() * 8
+      }));
+    }
+
+    // 生成模拟跌幅榜数据
+    function generateMockLosers() {
+      const symbols = ['UBER', 'SNAP', 'ZM', 'ROKU', 'SPOT', 'SQ', 'TWTR', 'PINS', 'DOCU', 'PTON'];
+      return symbols.map((symbol, index) => ({
+        symbol,
+        price: 50 + Math.random() * 100,
+        change: -(0.5 + Math.random() * 5)
+      }));
+    }
+
+    // 生成模拟推荐数据
+    function generateMockRecommendations() {
+      return [
+        {
+          symbol: 'AAPL',
+          recommendation: {
+            period: '0m',
+            strongBuy: 8,
+            buy: 15,
+            hold: 3,
+            sell: 1,
+            strongSell: 0
+          }
+        },
+        {
+          symbol: 'TSLA',
+          recommendation: {
+            period: '0m',
+            strongBuy: 5,
+            buy: 8,
+            hold: 12,
+            sell: 3,
+            strongSell: 2
+          }
+        },
+        {
+          symbol: 'AMZN',
+          recommendation: {
+            period: '0m',
+            strongBuy: 12,
+            buy: 18,
+            hold: 2,
+            sell: 0,
+            strongSell: 0
+          }
+        },
+        {
+          symbol: 'GOOGL',
+          recommendation: {
+            period: '0m',
+            strongBuy: 10,
+            buy: 14,
+            hold: 4,
+            sell: 1,
+            strongSell: 0
+          }
+        },
+        {
+          symbol: 'MSFT',
+          recommendation: {
+            period: '0m',
+            strongBuy: 15,
+            buy: 12,
+            hold: 2,
+            sell: 0,
+            strongSell: 0
+          }
+        },
+        {
+          symbol: 'NVDA',
+          recommendation: {
+            period: '0m',
+            strongBuy: 20,
+            buy: 8,
+            hold: 1,
+            sell: 0,
+            strongSell: 0
+          }
+        },
+        {
+          symbol: 'META',
+          recommendation: {
+            period: '0m',
+            strongBuy: 6,
+            buy: 10,
+            hold: 8,
+            sell: 4,
+            strongSell: 1
+          }
+        },
+        {
+          symbol: 'BABA',
+          recommendation: {
+            period: '0m',
+            strongBuy: 3,
+            buy: 7,
+            hold: 15,
+            sell: 8,
+            strongSell: 2
+          }
+        },
+        {
+          symbol: 'NFLX',
+          recommendation: {
+            period: '0m',
+            strongBuy: 4,
+            buy: 9,
+            hold: 11,
+            sell: 5,
+            strongSell: 1
+          }
+        },
+        {
+          symbol: 'AMD',
+          recommendation: {
+            period: '0m',
+            strongBuy: 7,
+            buy: 13,
+            hold: 6,
+            sell: 2,
+            strongSell: 0
+          }
+        }
+      ];
+    }
   </script>
 </body>
 </html>
