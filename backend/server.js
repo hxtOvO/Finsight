@@ -79,6 +79,16 @@ async function createTables() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `;
+  const createAssetActivityHistoryTable = `
+    CREATE TABLE IF NOT EXISTS asset_activity_history (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      operation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      operation_type ENUM('add', 'reduce') NOT NULL,
+      amount DECIMAL(12, 2) NOT NULL,
+      description TEXT,
+      asset_type VARCHAR(20) NOT NULL
+  )
+  `;
 
   // 废弃 assets 表，因为它与 current_assets 功能重叠且导致数据不一致
   // const createAssetsTable = `
@@ -177,6 +187,7 @@ async function createTables() {
   await db.execute(createFeaturedStocksTable);
   await db.execute(createCurrentAssetsTable);
   await db.execute(createBondTable);
+  await db.execute(createAssetActivityHistoryTable);
   await db.execute(createRecommendTable);
   await db.execute(createMarketTable);
 
@@ -1707,7 +1718,7 @@ app.get('/api/performance/:range', async (req, res) => {
  */
 app.post('/api/assets/:type/add', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol, period, couponRate } = req.body;
+  const { amount, symbol, period, couponRate,description } = req.body;
 
   try {
     // 基础参数验证：确保amount有效
@@ -1812,6 +1823,12 @@ app.post('/api/assets/:type/add', async (req, res) => {
       // 提交事务
       await db.commit();
 
+      // 记录操作历史
+      await db.execute(
+          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+          ['add', amount, description, type]
+      );
+      
       // 计算并返回总资产
       const totalPortfolio = await calculateCurrentTotalValue();
       res.json({ success: true, totalPortfolio });
@@ -1904,7 +1921,7 @@ app.post('/api/assets/:type/add', async (req, res) => {
  */
 app.post('/api/assets/:type/reduce', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol } = req.body;
+  const { amount, symbol,description } = req.body;
 
   try {
     if (amount === undefined || amount === null) {
@@ -1988,6 +2005,11 @@ app.post('/api/assets/:type/reduce', async (req, res) => {
       }
 
       await db.commit();
+      // 记录操作历史
+      await db.execute(
+          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+          ['reduce', amount, description, type]
+      );
       const totalPortfolio = await calculateCurrentTotalValue();
       res.json({ success: true, totalPortfolio });
     } catch (error) {
