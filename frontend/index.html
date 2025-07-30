@@ -399,43 +399,45 @@
               
               if (cashConfirmBtn) {
                 cashConfirmBtn.addEventListener('click', async () => {
-                  const amount = cashAmountInput.value;
-                  const operation = selectedCashOperation;
-                  const description = transactionDescription.value;
-                  
-                  if (!amount || parseFloat(amount) <= 0) {
-                    alert('Please enter a valid amount');
-                    return;
-                  }
-                  
-                  // 调用后端接口
-                  try {
-                    const response = await fetch('http://localhost:3000/api/assets/cash/add', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            amount: parseFloat(amount)
-                        })
-                    });
+                    const amount = cashAmountInput.value;
+                    const operation = selectedCashOperation; // 值为 'in' 或 'out'
+                    const description = transactionDescription.value;
 
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(errorData.error);
+                    if (!amount || parseFloat(amount) <= 0) {
+                        alert('Please enter a valid amount');
+                        return;
                     }
 
-                    const data = await response.json();
-                    console.log('API response:', data);
-                    alert(`Cash ${operation} of $${amount} confirmed!`);
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert(`An error occurred: ${error.message}`);
-                }
-                  
-                  // alert(`Cash ${operation} of $${amount} confirmed!`);
+                    try {
+                        // 根据操作类型选择正确的接口
+                        const assetType = 'cash';
+                        const endpoint = operation === 'in' ? 'add' : 'reduce'; // 关键修改点
+                        
+                        const response = await fetch(`http://localhost:3000/api/assets/${assetType}/${endpoint}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                amount: parseFloat(amount),
+                                description: description || 'No description'
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error);
+                        }
+
+                        const data = await response.json();
+                        console.log('API response:', data);
+                        alert(`Cash ${operation === 'in' ? 'added' : 'withdrawn'} of $${amount} confirmed!`);
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert(`An error occurred: ${error.message}`);
+                    }
                 });
-              }
+            }
               
               if (cashClearBtn) {
                 cashClearBtn.addEventListener('click', () => {
@@ -498,31 +500,52 @@
               const stockTransactionDescription = document.getElementById('stockTransactionDescription');
               
               if (stockConfirmBtn) {
-                stockConfirmBtn.addEventListener('click', () => {
-                  const symbol = stockSymbolInput.value.trim().toUpperCase();
-                  const quantity = stockQuantityInput.value;
-                  const operation = selectedStockOperation;
-                  const description = stockTransactionDescription.value;
-                  
-                  if (!symbol) {
-                    alert('Please enter a stock symbol');
-                    return;
-                  }
-                  if (!quantity || parseInt(quantity) <= 0) {
-                    alert('Please enter a valid quantity');
-                    return;
-                  }
-                  
-                  console.log('Stock transaction:', {
-                    operation: operation,
-                    symbol: symbol,
-                    quantity: parseInt(quantity),
-                    description: description || 'No description'
-                  });
-                  
-                  alert(`Stock ${operation} of ${quantity} shares of ${symbol} confirmed!`);
+                stockConfirmBtn.addEventListener('click', async () => {
+                    const symbol = stockSymbolInput.value.trim().toUpperCase();
+                    const quantity = stockQuantityInput.value;
+                    const operation = selectedStockOperation;
+                    const description = stockTransactionDescription.value;
+                    
+                    if (!symbol) {
+                        alert('Please enter a stock symbol');
+                        return;
+                    }
+                    if (!quantity || parseInt(quantity) <= 0) {
+                        alert('Please enter a valid quantity');
+                        return;
+                    }
+                    
+                    try {
+                        // 根据操作类型选择正确的接口
+                        const assetType = 'stock';
+                        const endpoint = operation === 'buy' ? 'add' : 'reduce';
+                        
+                        const response = await fetch(`http://localhost:3000/api/assets/${assetType}/${endpoint}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                symbol: symbol,
+                                amount: parseInt(quantity),
+                                description: description || 'No description'
+                            })
+                        });
+
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error);
+                        }
+
+                        const data = await response.json();
+                        console.log('API response:', data);
+                        alert(`Stock ${operation} of ${quantity} shares of ${symbol} confirmed!`);
+                    } catch (error) {
+                        console.error('Error:', error);
+                        alert(`An error occurred: ${error.message}`);
+                    }
                 });
-              }
+            }
               
               if (stockClearBtn) {
                 stockClearBtn.addEventListener('click', () => {
@@ -544,6 +567,7 @@
             if (bondBuyBtn && bondSellBtn) {
               let selectedBondOperation = 'buy';
               
+              // 更新按钮样式函数（保持不变）
               function updateBondButtonStyles() {
                 if (selectedBondOperation === 'buy') {
                   bondBuyBtn.style.background = '#db0011';
@@ -568,6 +592,7 @@
                 }
               }
               
+              // 绑定按钮切换事件（保持不变）
               bondBuyBtn.addEventListener('click', () => {
                 selectedBondOperation = 'buy';
                 updateBondButtonStyles();
@@ -578,52 +603,108 @@
                 updateBondButtonStyles();
               });
               
-              // 添加Bond Confirm和Clear按钮功能
+              // 获取DOM元素（使用HTML中实际的ID）
               const bondConfirmBtn = document.getElementById('bondConfirmBtn');
               const bondClearBtn = document.getElementById('bondClearBtn');
-              const bondCodeInput = document.getElementById('bondCodeInput');
-              const bondAmountInput = document.getElementById('bondAmountInput');
-              const bondMaturityInput = document.getElementById('bondMaturityInput');
-              const bondTransactionDescription = document.getElementById('bondTransactionDescription');
+              const bondCodeInput = document.getElementById('bondCodeInput'); // 债券代码
+              const bondAmountInput = document.getElementById('bondAmountInput'); // 金额
+              const bondMaturityInput = document.getElementById('bondMaturityInput'); // 期限（下拉框，HTML中实际ID）
+              const bondInterestRateInput = document.getElementById('bondInterestRateInput'); // 利率（HTML中实际ID）
+              const bondTransactionDescription = document.getElementById('bondTransactionDescription'); // 描述
               
+              // 确认按钮点击事件（核心修改）
               if (bondConfirmBtn) {
-                bondConfirmBtn.addEventListener('click', () => {
+                bondConfirmBtn.addEventListener('click', async () => {
+                  console.log('Confirm button clicked');
+                  
                   const bondCode = bondCodeInput.value.trim();
                   const amount = bondAmountInput.value;
-                  const maturity = bondMaturityInput.value;
-                  const operation = selectedBondOperation;
+                  const period = bondMaturityInput.value;
+                  const couponRate = bondInterestRateInput.value;
                   const description = bondTransactionDescription.value;
+                  const operation = selectedBondOperation; // 'buy' 或 'sell'
                   
+                  // 基础验证（所有操作都需要）
                   if (!bondCode) {
                     alert('Please enter bond details (ISIN or name)');
                     return;
                   }
-                  if (!amount || parseFloat(amount) < 100) {
+                  const amountNum = parseFloat(amount);
+                  if (isNaN(amountNum) || amountNum < 100) {
                     alert('Please enter a valid face value amount (minimum $100)');
                     return;
                   }
-                  if (!maturity) {
-                    alert('Please select a maturity period');
-                    return;
+                  
+                  // 购买操作需要额外验证期限和利率
+                  if (operation === 'buy') {
+                    if (!period) {
+                      alert('Please select a maturity period');
+                      return;
+                    }
+                    const couponRateNum = parseFloat(couponRate);
+                    if (isNaN(couponRateNum) || couponRateNum <= 0) {
+                      alert('Please enter a valid interest rate (positive number)');
+                      return;
+                    }
                   }
                   
-                  console.log('Bond transaction:', {
-                    operation: operation,
-                    bondCode: bondCode,
-                    amount: parseFloat(amount),
-                    maturity: maturity + ' years',
-                    description: description || 'No description'
-                  });
-                  
-                  alert(`Bond ${operation} of $${amount} face value (${bondCode}, ${maturity} years maturity) confirmed!`);
+                  try {
+                    // 构建请求参数（根据操作类型动态调整）
+                    const requestData = {
+                      symbol: bondCode,
+                      amount: amountNum,
+                      description: description || 'No description'
+                    };
+                    
+                    // 仅购买时添加期限和利率
+                    if (operation === 'buy') {
+                      requestData.period = parseInt(period);
+                      requestData.couponRate = parseFloat(couponRate);
+                    }
+                    
+                    const endpoint = operation === 'buy' ? 'add' : 'reduce';
+                    const url = `http://localhost:3000/api/assets/bond/${endpoint}`;
+                    
+                    console.log('Sending request to:', url, 'Data:', requestData);
+                    
+                    const response = await fetch(url, {
+                      method: 'POST',
+                      headers: {
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify(requestData)
+                    });
+                    
+                    if (!response.ok) {
+                      const errorData = await response.json();
+                      throw new Error(errorData.error || 'Operation failed');
+                    }
+                    
+                    const result = await response.json();
+                    alert(`Bond ${operation === 'buy' ? 'purchased' : 'sold'} successfully! Total portfolio: $${result.totalPortfolio.toFixed(2)}`);
+                    
+                    // 重置表单
+                    bondCodeInput.value = '';
+                    bondAmountInput.value = '';
+                    bondMaturityInput.value = '';
+                    bondInterestRateInput.value = '';
+                    bondTransactionDescription.value = '';
+                    selectedBondOperation = 'buy';
+                    updateBondButtonStyles();
+                    
+                  } catch (error) {
+                    console.error('Request failed:', error);
+                    alert(`Error: ${error.message}`);
+                  }
                 });
               }
-              
+              // 清空按钮逻辑（重置所有输入）
               if (bondClearBtn) {
                 bondClearBtn.addEventListener('click', () => {
                   bondCodeInput.value = '';
                   bondAmountInput.value = '';
                   bondMaturityInput.value = '';
+                  bondInterestRateInput.value = '';
                   bondTransactionDescription.value = '';
                   selectedBondOperation = 'buy';
                   updateBondButtonStyles();
@@ -682,28 +763,55 @@
               const otherTransactionDescription = document.getElementById('otherTransactionDescription');
               
               if (otherConfirmBtn) {
-                otherConfirmBtn.addEventListener('click', () => {
-                  const amount = otherAmountInput.value;
-                  const assetDescription = otherDescriptionInput.value.trim();
-                  const operation = selectedOtherOperation;
-                  const transactionDescription = otherTransactionDescription.value;
-                  
-                  if (!amount || parseFloat(amount) <= 0) {
-                    alert('Please enter a valid amount');
-                    return;
-                  }
-                  
-                  console.log('Other asset transaction:', {
-                    operation: operation,
-                    amount: parseFloat(amount),
-                    assetType: assetDescription || 'Other Asset',
-                    description: transactionDescription || 'No description'
-                  });
-                  
-                  const assetType = assetDescription ? ` (${assetDescription})` : '';
-                  alert(`Other asset ${operation} of $${amount}${assetType} confirmed!`);
+                otherConfirmBtn.addEventListener('click', async () => {
+                    const amount = otherAmountInput.value;
+                    const assetDescription = otherDescriptionInput.value.trim();
+                    const operation = selectedOtherOperation;
+                    const transactionDescription = otherTransactionDescription.value;
+                    
+                    if (!amount || parseFloat(amount) <= 0) {
+                        alert('Please enter a valid amount');
+                        return;
+                    }
+                    
+                    try {
+                        // 确定操作类型对应的 API 端点
+                        const endpoint = operation === 'add' ? 'add' : 'reduce';
+                        
+                        // 调用后端 API
+                        const response = await fetch(`http://localhost:3000/api/assets/other/${endpoint}`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                amount: parseFloat(amount),
+                                description: transactionDescription || `Other Asset ${operation === 'add' ? 'Addition' : 'Reduction'}`,
+                                // 可以根据需要添加更多参数
+                            })
+                        });
+                        
+                        if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Failed to process transaction');
+                        }
+                        
+                        const data = await response.json();
+                        console.log('API response:', data);
+                        
+                        // 显示成功消息
+                        const assetType = assetDescription ? ` (${assetDescription})` : '';
+                        alert(`Other asset ${operation} of $${amount}${assetType} confirmed!`);
+                        
+                        // 更新资产列表或执行其他操作
+                        updateAssetList();
+                        
+                    } catch (error) {
+                        console.error('Transaction error:', error);
+                        alert(`Error: ${error.message}`);
+                    }
                 });
-              }
+            }
               
               if (otherClearBtn) {
                 otherClearBtn.addEventListener('click', () => {
@@ -794,8 +902,9 @@
               <option value="30">30 Years</option>
             </select>
             <div style='font-size:20px;font-weight:600;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
-              Please choose your operation
+              Please enter the interest rate (%)
             </div>
+            <input id="bondInterestRateInput" type="number" step="0.01" min="0" style="width:160%;max-width:520px;padding:16px 14px;font-size:20px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:12px;">
             <div style="display:flex;gap:12px;">
               <button id="bondBuyBtn" style="padding:12px 20px;background:#db0011;color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(219,0,17,0.2);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Buy +</button>
               <button id="bondSellBtn" style="padding:12px 20px;background:#fff;color:#222;border:1px solid #ddd;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;transition:background 0.2s, color 0.2s;box-shadow:0 2px 8px rgba(0,0,0,0.1);white-space:nowrap;min-width:120px;text-align:center;display:flex;align-items:center;justify-content:center;">Sell -</button>
@@ -803,7 +912,7 @@
             <div style='font-size:20px;font-weight:600;margin-top:20px;margin-bottom:16px;color:#db0011;letter-spacing:0.5px;padding:8px 0 8px 0;border-radius:8px;white-space:nowrap;display:flex;align-items:center;gap:8px;'>
               Transaction Notes <span style='color:#1a233a;font-weight:500;'>(optional)</span>
             </div>
-            <textarea id="bondTransactionDescription" placeholder="Enter bond transaction details..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:24px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
+            <textarea id="bondTransactionDescription" placeholder="Enter transaction description..." style="width:360%;max-width:520px;padding:16px 14px;font-size:22px;border-radius:10px;border:1.5px solid #ccc;box-sizing:border-box;box-shadow:0 2px 8px rgba(0,0,0,0.07);text-align:left;margin-bottom:24px;resize:vertical;min-height:180px;font-family:inherit;"></textarea>
             <div style="display:flex;gap:16px;width:360%;max-width:520px;">
               <button id="bondConfirmBtn" style="flex:1;padding:16px 24px;background:#db0011;color:#fff;border:none;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(219,0,17,0.3);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Confirm</button>
               <button id="bondClearBtn" style="flex:1;padding:16px 24px;background:#fff;color:#333;border:2px solid #ddd;border-radius:10px;font-size:18px;font-weight:600;cursor:pointer;transition:all 0.2s;box-shadow:0 3px 12px rgba(0,0,0,0.1);min-height:56px;display:flex;align-items:center;justify-content:center;letter-spacing:0.5px;">Clear</button>
