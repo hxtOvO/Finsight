@@ -1964,26 +1964,47 @@
       }
     }
 
-    // Markdown渲染函数
+    // 增强的Markdown渲染函数
     function renderMarkdown(text) {
-      return text
-        // 标题渲染
-        .replace(/### (.*$)/gim, '<h3 style="color:#1a233a; font-weight:600; margin:16px 0 8px 0; font-size:16px;">$1</h3>')
-        .replace(/## (.*$)/gim, '<h2 style="color:#1a233a; font-weight:700; margin:20px 0 10px 0; font-size:18px;">$1</h2>')
-        .replace(/# (.*$)/gim, '<h1 style="color:#1a233a; font-weight:700; margin:24px 0 12px 0; font-size:20px;">$1</h1>')
+      if (!text) return '';
+      
+      // 预处理：确保文本干净
+      let processed = text.toString().trim();
+      
+      return processed
+        // 首先处理代码块（避免内部内容被其他规则影响）
+        .replace(/```([\s\S]*?)```/g, '<pre style="background:#f8fafc; padding:12px; border-radius:8px; border-left:4px solid #db0011; margin:12px 0; overflow-x:auto; font-family:monospace; font-size:13px; line-height:1.4;"><code>$1</code></pre>')
         
-        // 粗体和斜体
+        // 标题渲染（按从长到短的顺序，避免冲突）
+        .replace(/#### (.*$)/gim, '<h4 style="color:#1a233a; font-weight:600; margin:14px 0 6px 0; font-size:15px; border-bottom:1px solid #e5e7eb; padding-bottom:4px;">$1</h4>')
+        .replace(/### (.*$)/gim, '<h3 style="color:#1a233a; font-weight:600; margin:16px 0 8px 0; font-size:16px; border-bottom:1px solid #e5e7eb; padding-bottom:4px;">$1</h3>')
+        .replace(/## (.*$)/gim, '<h2 style="color:#1a233a; font-weight:700; margin:20px 0 10px 0; font-size:18px; border-bottom:2px solid #db0011; padding-bottom:6px;">$1</h2>')
+        .replace(/# (.*$)/gim, '<h1 style="color:#1a233a; font-weight:700; margin:24px 0 12px 0; font-size:20px; border-bottom:2px solid #db0011; padding-bottom:8px;">$1</h1>')
+        
+        // 粗体和斜体（支持更多格式）
+        .replace(/\*\*\*(.*?)\*\*\*/g, '<strong style="font-weight:700; font-style:italic; color:#1a233a;">$1</strong>')
         .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight:600; color:#1a233a;">$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em style="font-style:italic;">$1</em>')
+        .replace(/\*(.*?)\*/g, '<em style="font-style:italic; color:#374151;">$1</em>')
         
-        // 列表渲染
-        .replace(/^\d+\.\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:20px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">•</span>$1</div>')
-        .replace(/^[-*]\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:20px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">•</span>$1</div>')
+        // 有序列表（保持数字）
+        .replace(/^(\s*)(\d+)\.\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:24px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">$2.</span>$3</div>')
+        
+        // 无序列表
+        .replace(/^(\s*)[-*+]\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:20px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">•</span>$2</div>')
         
         // 行内代码
-        .replace(/`([^`]+)`/g, '<code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-family:monospace; font-size:13px; color:#db0011;">$1</code>')
+        .replace(/`([^`]+)`/g, '<code style="background:#f1f5f9; padding:3px 6px; border-radius:4px; font-family:monospace; font-size:13px; color:#db0011; border:1px solid #e5e7eb;">$1</code>')
         
-        // 换行处理
+        // 链接
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:#3b82f6; text-decoration:underline;" target="_blank">$1</a>')
+        
+        // 分隔线
+        .replace(/^---+$/gm, '<hr style="border:none; border-top:2px solid #e5e7eb; margin:20px 0;">')
+        
+        // 引用块
+        .replace(/^>\s+(.*)$/gim, '<blockquote style="border-left:4px solid #db0011; padding-left:16px; margin:12px 0; color:#6b7280; font-style:italic; background:#f8fafc; padding:12px 16px; border-radius:0 8px 8px 0;">$1</blockquote>')
+        
+        // 换行处理（最后处理）
         .replace(/\n\n/g, '<br><br>')
         .replace(/\n/g, '<br>');
     }
