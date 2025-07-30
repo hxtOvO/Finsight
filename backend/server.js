@@ -79,6 +79,16 @@ async function createTables() {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `;
+  const createAssetActivityHistoryTable = `
+    CREATE TABLE IF NOT EXISTS asset_activity_history (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      operation_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      operation_type ENUM('add', 'reduce') NOT NULL,
+      amount DECIMAL(12, 2) NOT NULL,
+      description TEXT,
+      asset_type VARCHAR(20) NOT NULL
+  )
+  `;
 
   // 废弃 assets 表，因为它与 current_assets 功能重叠且导致数据不一致
   // const createAssetsTable = `
@@ -120,6 +130,15 @@ async function createTables() {
   )
 `;
 
+  const createBondTable = `
+    CREATE TABLE IF NOT EXISTS bond (
+      asset_id INTEGER PRIMARY KEY REFERENCES current_assets(id) ON DELETE CASCADE,
+      period INTEGER NOT NULL CHECK (period > 0),
+      coupon_rate DECIMAL(5, 2),
+      amount INTEGER
+  );
+  `;
+
   const createCurrentAssetsTable = `
     CREATE TABLE IF NOT EXISTS current_assets (
       id int NOT NULL AUTO_INCREMENT PRIMARY KEY,
@@ -128,12 +147,51 @@ async function createTables() {
       amount decimal(18,2) DEFAULT NULL
     )
   `;
+  const createRecommendTable = `
+  CREATE TABLE IF NOT EXISTS Recommend (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      symbol VARCHAR(10) NOT NULL UNIQUE,
+      period VARCHAR(20),
+      strong_buy INT,
+      buy INT,
+      hold INT,
+      sell INT,
+      strong_sell INT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `;
+
+  const createMarketTable = `
+  CREATE TABLE IF NOT EXISTS Market (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    list_type VARCHAR(32) NOT NULL,
+    symbol VARCHAR(12) NOT NULL,
+    name VARCHAR(255),
+    price DECIMAL(12, 2),
+    \`change\` DECIMAL(12, 2),
+    change_percent DECIMAL(7, 4),
+    volume BIGINT,
+    market_cap BIGINT,
+    fifty_two_week_range VARCHAR(64),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_list_symbol (list_type, symbol)
+  );
+  `;
+
+
+
 
   await db.execute(createPortfolioTable);
   // await db.execute(createAssetsTable); // 移除 assets 表的创建
   await db.execute(createPerformanceTable);
   await db.execute(createFeaturedStocksTable);
   await db.execute(createCurrentAssetsTable);
+  await db.execute(createBondTable);
+  await db.execute(createAssetActivityHistoryTable);
+  await db.execute(createRecommendTable);
+  await db.execute(createMarketTable);
+
+
 
   console.log('✅ Database tables created successfully');
 }
@@ -378,7 +436,7 @@ const axios = require('axios');
 const { Ollama } = require('ollama');
 
 // 配置信息
-// const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd'; // 替换为你的实际API密钥
+const RAPIDAPI_KEY = '2eca160c32msh506e802cbfdce0bp1cc81ejsn3b0970b7d7cb'; // 替换为你的实际API密钥
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 // Ollama配置
@@ -801,11 +859,41 @@ app.post('/api/featured-stocks/add', async (req, res) => {
   }
 });
 
+//判断是否需要重新拉取
+function isStale(updatedAt) {
+  if (!updatedAt) return true; // 没有时间视为已过期
+
+  const updated = new Date(updatedAt);
+  const now = new Date();
+
+  const diffMs = now - updated;
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  return diffHours >= 24;
+}
+//缓存判断 + 拉新逻辑
+async function fetchRecommendationWithCache(symbol) {
+  const [rows] = await db.execute('SELECT * FROM Recommend WHERE symbol = ?', [symbol]);
+
+  if (rows.length > 0 && !isStale(rows[0].updated_at)) {
+    console.log(`Using cached recommendation for ${symbol}`);
+    return getProcessedRecommendation(symbol);
+  }
+
+  console.log(`🔄 [${symbol}] Cache missing or stale, fetching fresh data from API...`);
+
+  await fetchRecommendationTrend(symbol); // 会写入数据库
+
+  return getProcessedRecommendation(symbol);
+}
+
+
 //  固定的10个 symbol
 let SYMBOL_LIST = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
   'TSLA', 'META', 'NFLX', 'AMD', 'INTC'
 ];
+//调用接口后存数据库
 async function fetchRecommendationTrend(symbol) {
   try {
     const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
@@ -822,18 +910,109 @@ async function fetchRecommendationTrend(symbol) {
     const trendList = res.data?.body?.trend || [];
     const latest = trendList.length > 0 ? trendList[0] : null;
 
+    if (!latest) throw new Error('No recommendation data');
+
+    const { period, strongBuy, buy, hold, sell, strongSell } = latest;
+
+    // 插入或更新 MySQL
+    await db.execute(`
+      INSERT INTO recommend (symbol, period, strong_buy, buy, hold, sell, strong_sell)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        period = VALUES(period),
+        strong_buy = VALUES(strong_buy),
+        buy = VALUES(buy),
+        hold = VALUES(hold),
+        sell = VALUES(sell),
+        strong_sell = VALUES(strong_sell),
+        updated_at = CURRENT_TIMESTAMP
+    `, [symbol, period, strongBuy, buy, hold, sell, strongSell]);
+    console.log(`💾 [${symbol}] Data saved to database`);
+
+
     return {
       symbol,
-      recommendation: latest
+      period,
+      strongBuy,
+      buy,
+      hold,
+      sell,
+      strongSell
     };
   } catch (err) {
     console.error(`Error fetching recommendation trend for ${symbol}:`, err.message);
     return {
       symbol,
-      recommendation: null,
       error: err.message
     };
   }
+}
+// 启动时预加载 SYMBOL_LIST
+async function preloadRecommendationCache() {
+  console.log('🔄 Preloading recommendation data...');
+  for (const symbol of SYMBOL_LIST) {
+    try {
+      await fetchRecommendationWithCache(symbol);
+    } catch (err) {
+      console.error(`❌ Failed to preload ${symbol}:`, err.message);
+    }
+  }
+}
+
+// ✅ 立即执行预加载（可放到你 server 启动后执行的位置）
+
+
+
+//不存数据库每次调接口
+// async function fetchRecommendationTrend(symbol) {
+//   try {
+//     const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
+//       params: {
+//         ticker: symbol,
+//         module: 'recommendation-trend'
+//       },
+//       headers: {
+//         'x-rapidapi-key': RAPIDAPI_KEY,
+//         'x-rapidapi-host': RAPIDAPI_HOST
+//       }
+//     });
+
+//     const trendList = res.data?.body?.trend || [];
+//     const latest = trendList.length > 0 ? trendList[0] : null;
+
+//     return {
+//       symbol,
+//       recommendation: latest
+//     };
+//   } catch (err) {
+//     console.error(`Error fetching recommendation trend for ${symbol}:`, err.message);
+//     return {
+//       symbol,
+//       recommendation: null,
+//       error: err.message
+//     };
+//   }
+// }
+
+//从数据库查并格式化后处理
+async function getProcessedRecommendation(symbol) {
+  const [rows] = await db.execute('SELECT * FROM recommend WHERE symbol = ?', [symbol]);
+
+  if (rows.length === 0) return null;
+
+  const formatted = {
+    symbol: rows[0].symbol,
+    recommendation: {
+      period: rows[0].period,
+      strongBuy: rows[0].strong_buy,
+      buy: rows[0].buy,
+      hold: rows[0].hold,
+      sell: rows[0].sell,
+      strongSell: rows[0].strong_sell
+    }
+  };
+
+  return processRecommendationData([formatted])[0];
 }
 
 // 🤖 加权推荐算法
@@ -912,6 +1091,68 @@ function processRecommendationData(rawData) {
   });
 }
 
+
+//*------------------------------Market Screener API----------------------------------------------------------*//
+function isWithin24Hours(updatedAt) {
+  const updatedTime = new Date(updatedAt).getTime();
+  const now = Date.now();
+  return now - updatedTime < 24 * 60 * 60 * 1000; // 小于 24 小时
+}
+
+async function getMarketListWithCache(listType) {
+  // 1. 查缓存
+  const [rows] = await db.execute(
+    `SELECT * FROM Market WHERE list_type = ? ORDER BY updated_at DESC`,
+    [listType]
+  );
+
+  const isValid = rows.length >= 10 && rows.every(row => isWithin24Hours(row.updated_at));
+
+  if (isValid) {
+    console.log(`[${listType}] Using cached market data from DB`);
+
+    return rows.map(row => ({
+      symbol: row.symbol,
+      name: row.name,
+      price: row.price,
+      change: row.change,
+      changePercent: row.change_percent,
+      volume: row.volume,
+      marketCap: row.market_cap,
+      fiftyTwoWeekRange: row.fifty_two_week_range
+    }));
+  }
+  console.log(`[${listType}] Cache missing or stale, fetching fresh data from API...`);
+
+  // 2. 否则拉新数据
+  const data = await fetchMarketList(listType);
+  const top10 = extractTop10Quotes(data.body || []);
+
+  // 3. 写入缓存（REPLACE 覆盖旧数据）
+  for (const item of top10) {
+    await db.execute(`
+      REPLACE INTO Market
+      (list_type, symbol, name, price,\`change\`, change_percent, volume, market_cap, fifty_two_week_range, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `, [
+      listType,
+      item.symbol,
+      item.name,
+      item.price,
+      item.change,
+      item.changePercent,
+      item.volume,
+      item.marketCap,
+      item.fiftyTwoWeekRange
+    ]);
+  }
+
+  return top10;
+}
+
+
+
+
 const market_API = 'https://yahoo-finance15.p.rapidapi.com/api/v1/markets/screener';
 
 
@@ -938,38 +1179,70 @@ function extractTop10Quotes(quotes) {
     fiftyTwoWeekRange: item.fiftyTwoWeekRange
   }));
 }
-// ✅ 涨幅榜（day_gainers）
+// 涨幅榜（day_gainers）-调用接口
+// app.get('/api/market/gainers', async (req, res) => {
+//   try {
+//     const data = await fetchMarketList('day_gainers');
+//     const top10 = extractTop10Quotes(data.body || []);
+//     res.json(top10);
+//   } catch (error) {
+//     console.error('Error fetching gainers:', error.message);
+//     res.status(500).json({ error: 'Failed to fetch gainers' });
+//   }
+// });
+
+
+// 涨幅榜（day_gainers）-使用缓存
 app.get('/api/market/gainers', async (req, res) => {
   try {
-    const data = await fetchMarketList('day_gainers');
-    const top10 = extractTop10Quotes(data.body || []);
-    res.json(top10);
+    const result = await getMarketListWithCache('day_gainers');
+    res.json(result);
   } catch (error) {
     console.error('Error fetching gainers:', error.message);
     res.status(500).json({ error: 'Failed to fetch gainers' });
   }
 });
 
+//  跌幅榜（day_losers）--调用接口
+// app.get('/api/market/losers', async (req, res) => {
+//   try {
+//     const data = await fetchMarketList('day_losers');
+//     const top10 = extractTop10Quotes(data.body || []);
+//     res.json(top10);
+//   } catch (error) {
+//     console.error('Error fetching losers:', error.message);
+//     res.status(500).json({ error: 'Failed to fetch losers' });
+//   }
+// });
 
-
-// ✅ 跌幅榜（day_losers）
+// 跌幅榜（day_losers）--使用缓存
 app.get('/api/market/losers', async (req, res) => {
   try {
-    const data = await fetchMarketList('day_losers');
-    const top10 = extractTop10Quotes(data.body || []);
-    res.json(top10);
+    const result = await getMarketListWithCache('day_losers');
+    res.json(result);
   } catch (error) {
     console.error('Error fetching losers:', error.message);
     res.status(500).json({ error: 'Failed to fetch losers' });
   }
 });
 
-// ✅ 最活跃榜（most_actives）
+// 最活跃榜（most_actives）-调用接口
+// app.get('/api/market/most-active', async (req, res) => {
+//   try {
+//     const data = await fetchMarketList('most_actives');
+//     const top10 = extractTop10Quotes(data.body || []);
+//     res.json(top10);
+//   } catch (error) {
+//     console.error('Error fetching most actives:', error.message);
+//     res.status(500).json({ error: 'Failed to fetch most actives' });
+//   }
+// });
+
+// 最活跃榜（most_actives）-使用缓存
 app.get('/api/market/most-active', async (req, res) => {
   try {
-    const data = await fetchMarketList('most_actives');
-    const top10 = extractTop10Quotes(data.body || []);
-    res.json(top10);
+    const result = await getMarketListWithCache('most_actives');
+    res.json(result);
   } catch (error) {
     console.error('Error fetching most actives:', error.message);
     res.status(500).json({ error: 'Failed to fetch most actives' });
@@ -977,6 +1250,7 @@ app.get('/api/market/most-active', async (req, res) => {
 });
 
 
+//*------------------------------Market Screener API----------------------------------------------------------*//
 
 
 
@@ -994,44 +1268,47 @@ app.get('/api/market/most-active', async (req, res) => {
 
 
 
-// Get接口：返回所有 symbol 的推荐趋势（使用加权算法）
-/**
- * @swagger
- * /api/recommendation-trend:
- *   get:
- *     summary: 获取股票推荐趋势列表
- *     description: 返回预设股票列表的推荐趋势数据
- *     tags: [Recommendation Trends]
- *     responses:
- *       200:
- *         description: 成功返回趋势列表
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   symbol:
- *                     type: string
- *                     example: "AAPL"
- *                   recommendation:
- *                     type: object
- *                     description: 推荐趋势数据（如买入/卖出评级）
- *                   error:
- *                     type: string
- *                     nullable: true
- *                     example: null
- */
+
+//Get接口，从API查询数据再返回
+// app.get('/api/recommendation-trend', async (req, res) => {
+//   const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
+//   const results = await Promise.all(promises);
+
+//   // 使用加权算法处理数据
+//   const processedResults = processRecommendationData(results);
+
+//   res.json(processedResults);
+// });
+
+//Get接口：返回所有 symbol 的推荐趋势（使用数据库存储）
 app.get('/api/recommendation-trend', async (req, res) => {
-  const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
-  const results = await Promise.all(promises);
+  try {
+    const [rows] = await db.execute('SELECT * FROM Recommend ORDER BY symbol');
 
-  // 使用加权算法处理数据
-  const processedResults = processRecommendationData(results);
+    // 构建推荐数据结构（不含 updated_at）
+    const formatted = rows.map(row => ({
+      symbol: row.symbol,
+      recommendation: {
+        period: row.period,
+        strongBuy: row.strong_buy,
+        buy: row.buy,
+        hold: row.hold,
+        sell: row.sell,
+        strongSell: row.strong_sell
+      }
+    }));
 
-  res.json(processedResults);
+    const processed = processRecommendationData(formatted);
+
+    res.json(processed);
+  } catch (err) {
+    console.error('DB error:', err.message);
+    res.status(500).json({ error: 'Database query failed' });
+  }
 });
+
+
+
 //Post接口
 /**
  * @swagger
@@ -1068,6 +1345,21 @@ app.get('/api/recommendation-trend', async (req, res) => {
  *       400:
  *         description: 缺少股票代码
  */
+// app.post('/api/recommendation-trend/add', async (req, res) => {
+//   const { symbol } = req.body;
+//   if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
+
+//   const cleanSymbol = symbol.trim().toUpperCase();
+
+//   if (!SYMBOL_LIST.includes(cleanSymbol)) {
+//     SYMBOL_LIST.push(cleanSymbol);
+//   }
+
+//   const result = await fetchRecommendationTrend(cleanSymbol);
+//   const processedResult = processRecommendationData([result])[0];
+
+//   res.json(processedResult);
+// });
 app.post('/api/recommendation-trend/add', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
@@ -1078,10 +1370,18 @@ app.post('/api/recommendation-trend/add', async (req, res) => {
     SYMBOL_LIST.push(cleanSymbol);
   }
 
-  const result = await fetchRecommendationTrend(cleanSymbol);
-  const processedResult = processRecommendationData([result])[0];
+  try {
+    const result = await fetchRecommendationWithCache(cleanSymbol);
 
-  res.json(processedResult);
+    if (!result) {
+      return res.status(404).json({ error: 'Failed to get recommendation data' });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/recommendation-trend/add error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
@@ -1376,6 +1676,49 @@ app.put('/api/assets/:type', async (req, res) => {
       [today, newTotal, 'all', newTotal]
     );
 
+    // ====================================================================
+    // *** 新增/更新的逻辑：将扇形图数据（current_assets的各项明细）更新到 asset_history 表中今天的记录 ***
+    // 重新计算并获取所有资产类型的当前总值（明细）
+    const [allCurrentAssets] = await db.execute('SELECT * FROM current_assets');
+    const todayCashValue = allCurrentAssets.filter(r => r.type === 'cash').reduce((sum, r) => sum + Number(r.amount), 0);
+    const todayBondValue = allCurrentAssets.filter(r => r.type === 'bond').reduce((sum, r) => sum + Number(r.amount), 0);
+    const todayOtherValue = allCurrentAssets.filter(r => r.type === 'other').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    let todayStockValue = 0;
+    const todayStockRows = allCurrentAssets.filter(r => r.type === 'stock');
+    if (todayStockRows.length > 0) {
+      const symbols = todayStockRows.map(r => r.symbol);
+      if (symbols.length > 0) {
+        const placeholders = symbols.map(() => '?').join(',');
+        const [prices] = await db.execute(`SELECT symbol, price FROM featured_stocks WHERE symbol IN (${placeholders})`, symbols);
+        const priceMap = {};
+        prices.forEach(p => { priceMap[p.symbol] = Number(p.price); });
+        todayStockValue = todayStockRows.reduce((sum, r) => {
+          const price = priceMap[r.symbol] || 0;
+          return sum + Number(r.amount) * price;
+        }, 0);
+      }
+    }
+
+    // 使用 ON DUPLICATE KEY UPDATE 确保：
+    // 如果今天的数据已存在，则更新它；如果不存在，则插入新记录。
+    await db.execute(
+      'INSERT INTO asset_history (date, cash_value, stock_value, bond_value, other_value) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE cash_value = ?, stock_value = ?, bond_value = ?, other_value = ?',
+      [
+        today,
+        parseFloat(todayCashValue.toFixed(2)),
+        parseFloat(todayStockValue.toFixed(2)),
+        parseFloat(todayBondValue.toFixed(2)),
+        parseFloat(todayOtherValue.toFixed(2)),
+        parseFloat(todayCashValue.toFixed(2)), // ON DUPLICATE KEY UPDATE 的值
+        parseFloat(todayStockValue.toFixed(2)),
+        parseFloat(todayBondValue.toFixed(2)),
+        parseFloat(todayOtherValue.toFixed(2))
+      ]
+    );
+    console.log(`✅ ${today} 的 asset_history 记录已更新/插入，反映最新资产分配。`);
+    // ====================================================================
+
     res.json({
       success: true,
       updatedAssetType: type,
@@ -1530,58 +1873,88 @@ app.get('/api/performance/:range', async (req, res) => {
  * @swagger
  * /api/assets/{type}/add:
  *   post:
- *     summary: 增加指定类型资产
- *     description: 增加现金、债券、股票、其他资产的数量
- *     tags: [Assets]
+ *     summary: 增加指定类型的资产数量
+ *     description: 根据资产类型（如股票、债券等）增加对应资产的持有数量，不同类型资产需提供不同的补充参数
+ *     tags:
+ *       - 资产管理
  *     parameters:
  *       - in: path
  *         name: type
  *         required: true
+ *         description: 资产类型，支持现金、债券、股票、其他资产
  *         schema:
  *           type: string
- *           enum: [cash, stock, bond, other]
- *         description: 资产类型
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - amount
- *             properties:
- *               amount:
- *                 type: number
- *                 format: float
- *                 example: 1000.50
- *                 description: 增加的资产数量
- *               symbol:
- *                 type: string
- *                 example: "AAPL"
- *                 description: 股票代码（仅type=stock时需要）
+ *           enum: [cash, bond, stock, other]
+ *       - in: body
+ *         name: assetAdd
+ *         required: true
+ *         description: 增加资产的详细信息，不同类型资产需提供不同参数
+ *         schema:
+ *           type: object
+ *           required:
+ *             - amount
+ *           properties:
+ *             amount:
+ *               type: number
+ *               description: 需增加的资产数量，必须为正数（整数或小数，根据资产类型而定）
+ *               example: 5000.25
+ *             symbol:
+ *               type: string
+ *               description: 资产标识（股票代码/债券代码），股票类型必填，债券类型可选（未提供时自动生成）
+ *               example: "STOCK001"
+ *             period:
+ *               type: integer
+ *               description: 债券期限（仅债券类型必填），需为正整数
+ *               example: 5
+ *             couponRate:
+ *               type: number
+ *               description: 债券票面利率（仅债券类型必填），需为非负数（百分比形式，如3.5表示3.5%）
+ *               example: 3.5
  *     responses:
  *       200:
- *         description: 增加成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 totalPortfolio:
- *                   type: number
- *                   format: float
+ *         description: 资产增加成功
+ *         schema:
+ *           type: object
+ *           properties:
+ *             success:
+ *               type: boolean
+ *               description: 操作结果状态
+ *               example: true
+ *             totalPortfolio:
+ *               type: number
+ *               description: 操作后的投资组合总价值
+ *               example: 85000.50
  *       400:
- *         description: 参数错误（如缺少数量或股票代码）
+ *         description: 缺少必要参数或参数格式不正确
+ *         schema:
+ *           type: object
+ *           properties:
+ *             error:
+ *               type: string
+ *               description: 错误信息
+ *               examples:
+ *                 missingAmount:
+ *                   value: "缺少增加的资产数量 (amount)"
+ *                 invalidAmount:
+ *                   value: "增加的资产数量 (amount) 必须是正数"
+ *                 bondParamsMissing:
+ *                   value: "债券类型需要提供期限 (period) 和票面利率 (couponRate)"
  *       500:
- *         description: 服务器错误
+ *         description: 服务器内部错误（如数据库操作失败）
+ *         schema:
+ *           type: object
+ *           properties:
+ *             error:
+ *               type: string
+ *               description: 错误详情
+ *               example: "数据库操作失败：连接超时"
  */
 app.post('/api/assets/:type/add', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol } = req.body;
+  const { amount, symbol, period, couponRate,description } = req.body;
 
   try {
+    // 基础参数验证：确保amount有效
     if (amount === undefined || amount === null) {
       return res.status(400).json({ error: '缺少增加的资产数量 (amount)' });
     }
@@ -1589,34 +1962,114 @@ app.post('/api/assets/:type/add', async (req, res) => {
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ error: '增加的资产数量 (amount) 必须是正数' });
     }
+    // 转换为整数（匹配bond表的INTEGER类型）
+    const bondAmount = Math.round(numericAmount); // 或根据业务需求使用parseInt()
 
-    if (type === 'stock') {
-      if (!symbol) {
-        return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
+    // 债券类型特有参数验证
+    if (type === 'bond') {
+      if (!period || !couponRate) {
+        return res.status(400).json({
+          error: '债券类型需要提供期限 (period) 和票面利率 (couponRate)'
+        });
       }
-      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', [type, symbol]);
-      if (stockAsset.length === 0) {
-        // 如果没有该股票记录，则插入新记录
-        await db.execute('INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', [type, symbol, numericAmount]);
-      } else {
-        // 更新现有记录
-        const newAmount = Number(stockAsset[0].amount) + numericAmount;
-        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, stockAsset[0].id]);
+      // 验证period为正整数（匹配bond表的CHECK约束）
+      const numericPeriod = parseInt(period);
+      if (isNaN(numericPeriod) || numericPeriod <= 0) {
+        return res.status(400).json({ error: '债券期限 (period) 必须是正整数' });
       }
-    } else {
-      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
-      if (asset.length === 0) {
-        // 如果没有该类型资产记录，则插入新记录
-        await db.execute('INSERT INTO current_assets (type, amount) VALUES (?, ?)', [type, numericAmount]);
-      } else {
-        // 更新现有记录
-        const newAmount = Number(asset[0].amount) + numericAmount;
-        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
+      // 验证coupon_rate为有效数值
+      const numericCouponRate = parseFloat(couponRate);
+      if (isNaN(numericCouponRate) || numericCouponRate < 0) {
+        return res.status(400).json({ error: '票面利率 (couponRate) 必须是非负数' });
       }
     }
 
-    const totalPortfolio = await calculateCurrentTotalValue();
-    res.json({ success: true, totalPortfolio });
+    // 开始数据库事务（确保current_assets和bond表操作原子性）
+    await db.beginTransaction();
+
+    try {
+      let assetId;
+      if (type === 'stock') {
+        // 股票类型处理（保持不变）
+        if (!symbol) {
+          return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
+        }
+        const [stockAsset] = await db.execute(
+          'SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?',
+          [type, symbol]
+        );
+        if (stockAsset.length === 0) {
+          const [result] = await db.execute(
+            'INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)',
+            [type, symbol, numericAmount]
+          );
+          assetId = result.insertId;
+        } else {
+          const newAmount = Number(stockAsset[0].amount) + numericAmount;
+          await db.execute(
+            'UPDATE current_assets SET amount = ? WHERE id = ?',
+            [newAmount, stockAsset[0].id]
+          );
+          assetId = stockAsset[0].id;
+        }
+      } else if (type === 'bond') {
+        // 债券类型处理（新增bond表的amount字段插入）
+        // 1. 插入基础资产记录到current_assets
+        const [result] = await db.execute(
+          'INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)',
+          [type, symbol || `BOND_${Date.now()}`, numericAmount] // symbol可选，自动生成默认值
+        );
+        assetId = result.insertId;
+
+        // 2. 插入债券特有信息到bond表（包含amount字段）
+        await db.execute(
+          'INSERT INTO bond (asset_id, period, coupon_rate, amount) VALUES (?, ?, ?, ?)',
+          [
+            assetId,
+            parseInt(period), // 转换为整数（匹配表结构）
+            parseFloat(couponRate), // 保持小数（匹配DECIMAL类型）
+            bondAmount // 债券金额（转换为整数）
+          ]
+        );
+      } else {
+        // 其他资产类型处理（保持不变）
+        const [asset] = await db.execute(
+          'SELECT id, amount FROM current_assets WHERE type = ?',
+          [type]
+        );
+        if (asset.length === 0) {
+          const [result] = await db.execute(
+            'INSERT INTO current_assets (type, amount) VALUES (?, ?)',
+            [type, numericAmount]
+          );
+          assetId = result.insertId;
+        } else {
+          const newAmount = Number(asset[0].amount) + numericAmount;
+          await db.execute(
+            'UPDATE current_assets SET amount = ? WHERE id = ?',
+            [newAmount, asset[0].id]
+          );
+          assetId = asset[0].id;
+        }
+      }
+
+      // 提交事务
+      await db.commit();
+
+      // 记录操作历史
+      await db.execute(
+          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+          ['add', amount, description, type]
+      );
+      
+      // 计算并返回总资产
+      const totalPortfolio = await calculateCurrentTotalValue();
+      res.json({ success: true, totalPortfolio });
+    } catch (error) {
+      // 事务回滚
+      await db.rollback();
+      throw error;
+    }
   } catch (error) {
     console.error('Error in /api/assets/:type/add:', error);
     res.status(500).json({ error: error.message });
@@ -1628,105 +2081,174 @@ app.post('/api/assets/:type/add', async (req, res) => {
  * @swagger
  * /api/assets/{type}/reduce:
  *   post:
- *     summary: 减少指定类型资产
- *     description: 减少现金、债券、股票、其他资产的数量
- *     tags: [Assets]
+ *     summary: 减少指定类型的资产数量
+ *     description: 根据资产类型减少对应资产的持有数量。支持现金、债券、股票等多种资产类型。
+ *     tags:
+ *       - 资产管理
  *     parameters:
  *       - in: path
  *         name: type
  *         required: true
+ *         description: 资产类型，可选值为 cash、bond、stock、other
  *         schema:
  *           type: string
- *           enum: [cash, stock, bond, other]
- *         description: 资产类型
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - amount
- *             properties:
- *               amount:
- *                 type: number
- *                 format: float
- *                 example: 1000.50
- *                 description: 减少的资产数量
- *               symbol:
- *                 type: string
- *                 example: "AAPL"
- *                 description: 股票代码（仅type=stock时需要）
+ *           enum: [cash, bond, stock, other]
+ *       - in: body
+ *         name: assetReduce
+ *         required: true
+ *         description: 需要减少的资产数量和相关参数
+ *         schema:
+ *           type: object
+ *           required:
+ *             - amount
+ *           properties:
+ *             amount:
+ *               type: number
+ *               description: 需要减少的资产数量，必须为正数
+ *               example: 100.50
+ *             symbol:
+ *               type: string
+ *               description: 当资产类型为 bond 时，必须提供债券代码
+ *               example: "BOND001"
  *     responses:
  *       200:
- *         description: 减少成功
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 totalPortfolio:
- *                   type: number
- *                   format: float
+ *         description: 资产减少成功
+ *         schema:
+ *           type: object
+ *           properties:
+ *             success:
+ *               type: boolean
+ *               description: 操作结果状态
+ *               example: true
+ *             totalPortfolio:
+ *               type: number
+ *               description: 操作后的投资组合总价值
+ *               example: 50000.75
  *       400:
- *         description: 参数错误（如缺少数量或股票代码）
+ *         description: 缺少必要参数或参数格式不正确
+ *         schema:
+ *           type: object
+ *           properties:
+ *             error:
+ *               type: string
+ *               description: 错误信息
+ *               example: "缺少减少的资产数量 (amount)"
  *       403:
- *         description: 资产数量不足
+ *         description: 资产数量不足或记录不存在
+ *         schema:
+ *           type: object
+ *           properties:
+ *             error:
+ *               type: string
+ *               description: 错误信息
+ *               example: "持有的 BOND001 债券数量不足（当前: 50，请求减少: 100）"
  *       500:
- *         description: 服务器错误
+ *         description: 服务器内部错误
+ *         schema:
+ *           type: object
+ *           properties:
+ *             error:
+ *               type: string
+ *               description: 错误信息
+ *               example: "系统错误：债券数据不一致，请联系管理员"
  */
 app.post('/api/assets/:type/reduce', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol } = req.body;
+  const { amount, symbol,description } = req.body;
 
   try {
     if (amount === undefined || amount === null) {
       return res.status(400).json({ error: '缺少减少的资产数量 (amount)' });
     }
-    const numericAmount = parseFloat(amount);
+
+    // 关键修改：将金额转换为整数（与数据库类型匹配）
+    const numericAmount = Math.floor(parseFloat(amount));
     if (isNaN(numericAmount) || numericAmount <= 0) {
       return res.status(400).json({ error: '减少的资产数量 (amount) 必须是正数' });
     }
 
-    if (type === 'stock') {
-      if (!symbol) {
-        return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
-      }
-      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', [type, symbol]);
-      if (stockAsset.length === 0) {
-        return res.status(403).json({ error: `没有 ${symbol} 股票记录，无法减少` });
-      }
-      const currentAmount = Number(stockAsset[0].amount);
-      if (currentAmount < numericAmount) {
-        return res.status(403).json({ error: `持有的 ${symbol} 股票数量不足，无法减少` });
-      }
-      const newAmount = currentAmount - numericAmount;
-      if (newAmount === 0) {
-        await db.execute('DELETE FROM current_assets WHERE id = ?', [stockAsset[0].id]);
-      } else {
-        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, stockAsset[0].id]);
-      }
-    } else {
-      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
-      if (asset.length === 0) {
-        return res.status(403).json({ error: `没有 ${type} 资产记录，无法减少` });
-      }
-      const currentAmount = Number(asset[0].amount);
-      if (currentAmount < numericAmount) {
-        return res.status(403).json({ error: `${type} 资产数量不足，无法减少` });
-      }
-      const newAmount = currentAmount - numericAmount;
-      if (newAmount === 0) {
-        await db.execute('DELETE FROM current_assets WHERE id = ?', [asset[0].id]);
-      } else {
-        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
-      }
-    }
+    // 开始数据库事务
+    await db.beginTransaction();
 
-    const totalPortfolio = await calculateCurrentTotalValue();
-    res.json({ success: true, totalPortfolio });
+    try {
+      let assetId;
+      if (type === 'bond') {
+        if (!symbol) {
+          return res.status(400).json({ error: '债券类型需要提供债券代码 (symbol)' });
+        }
+
+        // 修改查询：同时获取两个表的amount进行验证
+        const [bondAsset] = await db.execute(
+          'SELECT a.id, a.amount AS current_assets_amount, b.amount AS bond_amount ' +
+          'FROM current_assets a ' +
+          'JOIN bond b ON a.id = b.asset_id ' +
+          'WHERE a.type = ? AND a.symbol = ?',
+          [type, symbol]
+        );
+
+        if (bondAsset.length === 0) {
+          return res.status(403).json({ error: `没有 ${symbol} 债券记录，无法减少` });
+        }
+
+        // 获取两个表的amount并验证一致性
+        const currentAssetsAmount = Number(bondAsset[0].current_assets_amount);
+        const bondAmount = Number(bondAsset[0].bond_amount);
+
+        // 新增：验证两个表的amount是否一致
+        if (currentAssetsAmount !== bondAmount) {
+          console.error(`数据不一致：current_assets.amount=${currentAssetsAmount}, bond.amount=${bondAmount}`);
+          return res.status(500).json({ error: '系统错误：债券数据不一致，请联系管理员' });
+        }
+
+        // 使用current_assets的amount进行比较（与前端类型一致）
+        if (currentAssetsAmount < numericAmount) {
+          return res.status(403).json({
+            error: `持有的 ${symbol} 债券数量不足（当前: ${currentAssetsAmount}，请求减少: ${numericAmount}）`
+          });
+        }
+
+        const newAmount = currentAssetsAmount - numericAmount;
+        assetId = bondAsset[0].id;
+
+        if (newAmount === 0) {
+          await db.execute('DELETE FROM bond WHERE asset_id = ?', [assetId]);
+          await db.execute('DELETE FROM current_assets WHERE id = ?', [assetId]);
+        } else {
+          // 同步更新两个表（保持一致）
+          await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, assetId]);
+          await db.execute('UPDATE bond SET amount = ? WHERE asset_id = ?', [newAmount, assetId]);
+        }
+      } else {
+        // 其他资产类型处理（保持不变）
+        const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
+        if (asset.length === 0) {
+          return res.status(403).json({ error: `没有 ${type} 资产记录，无法减少` });
+        }
+        const currentAmount = Number(asset[0].amount);
+        if (currentAmount < numericAmount) {
+          return res.status(403).json({ error: `${type} 资产数量不足，无法减少` });
+        }
+        const newAmount = currentAmount - numericAmount;
+        assetId = asset[0].id;
+        if (newAmount === 0) {
+          await db.execute('DELETE FROM current_assets WHERE id = ?', [assetId]);
+        } else {
+          await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, assetId]);
+        }
+      }
+
+      await db.commit();
+      // 记录操作历史
+      await db.execute(
+          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+          ['reduce', amount, description, type]
+      );
+      const totalPortfolio = await calculateCurrentTotalValue();
+      res.json({ success: true, totalPortfolio });
+    } catch (error) {
+      await db.rollback();
+      throw error;
+    }
   } catch (error) {
     console.error('Error in /api/assets/:type/reduce:', error);
     res.status(500).json({ error: error.message });
@@ -1761,6 +2283,32 @@ app.get('/api/health', (req, res) => {
 });
 
 
+
+
+
+
+// Start server
+app.listen(PORT, async () => {
+  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
+
+  try {
+    await initDatabase(); // 确保数据库表建好
+    await preloadRecommendationCache(); // 预加载推荐数据
+    console.log('✅ Recommendation cache preloaded');
+  } catch (err) {
+    console.error('❌ Failed to preload recommendation data:', err.message);
+  }
+});
+
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  if (db) {
+    await db.end();
+    console.log('🔌 MySQL connection closed.');
+  }
+  process.exit(0);
+});
 // 涨幅榜
 app.get('/api/top-gainers', async (req, res) => {
   try {
