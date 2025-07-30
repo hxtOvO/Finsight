@@ -1294,38 +1294,51 @@ app.get('/api/performance/:range', async (req, res) => {
   const { range } = req.params;
 
   try {
-    // 从 asset_history 表获取数据（包含日期和四个资产列）
     const [allRows] = await db.execute(
       'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date'
     );
+
+    // *** 关键的 console.log 1 ***
+    // console.log('Raw database rows from db.execute (full data for 28, 29, 30):');
+    // allRows.forEach(row => {
+    //     const rowDate = new Date(row.date).toISOString().split('T')[0]; // 格式化日期方便查看
+    //     if (rowDate === '2025-07-28' || rowDate === '2025-07-29' || rowDate === '2025-07-30') {
+    //         console.log(row);
+    //     }
+    // });
+
 
     if (allRows.length === 0) {
       return res.json([]);
     }
 
-    // 对每条记录计算四列总和，格式化为 { date, value }
     const summedData = allRows.map(row => {
-      // 确保数值为数字（处理可能的NULL或非数值）
       const cash = Number(row.cash_value) || 0;
       const stock = Number(row.stock_value) || 0;
       const bond = Number(row.bond_value) || 0;
       const other = Number(row.other_value) || 0;
       return {
         date: row.date,
-        value: Math.round((cash + stock + bond + other) * 100) / 100 // 保留两位小数
+        value: Math.round((cash + stock + bond + other) * 100) / 100
       };
     });
 
-    // 根据时间范围筛选数据（逻辑与原逻辑一致）
+    // *** 关键的 console.log 2 ***
+    // console.log('Calculated summedData (full data for 28, 29, 30):');
+    // summedData.forEach(item => {
+    //     const itemDate = new Date(item.date).toISOString().split('T')[0];
+    //     if (itemDate === '2025-07-28' || itemDate === '2025-07-29' || itemDate === '2025-07-30') {
+    //         console.log(item);
+    //     }
+    // });
+
+
     let resultData = [];
     if (range === '7d') {
-      // 7天：返回最近7天的数据
       resultData = summedData.slice(-7);
     } else if (range === '1m') {
-      // 1个月：返回最近30天的数据
       resultData = summedData.slice(-30);
     } else if (range === '6m') {
-      // 6个月：返回全部数据（假设asset_history存储6个月数据）
       resultData = summedData;
     }
 
