@@ -1346,7 +1346,6 @@ app.get('/api/performance/:range', async (req, res) => {
 });
 
 // 增加资产接口
-javascript
 /**
  * @swagger
  * /api/assets/{type}/add:
