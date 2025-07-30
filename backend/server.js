@@ -1392,31 +1392,48 @@ app.put('/api/assets/:type', async (req, res) => {
 
 // LLM Chat API
 app.post('/api/chat', async (req, res) => {
+  console.log('🔥 [API] 收到 /api/chat 请求');
+  console.log('🔥 [API] 请求体:', req.body);
+  
   const { message } = req.body;
   
   if (!message || message.trim().length === 0) {
+    console.log('❌ [API] 消息为空');
     return res.status(400).json({ error: '请输入您的问题' });
   }
 
+  console.log('💬 [API] 用户消息:', message);
+
   try {
+    console.log('📊 [API] 开始获取财务数据...');
     // 获取用户财务数据
     const financialData = await getFinancialDataForLLM();
     
     if (!financialData) {
+      console.log('❌ [API] 财务数据获取失败');
       return res.status(500).json({ error: '无法获取财务数据' });
     }
 
+    console.log('✅ [API] 财务数据获取成功');
+    console.log('🤖 [API] 开始调用Qwen...');
+    
     // 调用Qwen进行对话
     const aiResponse = await chatWithQwen(message.trim(), financialData);
     
-    res.json({
+    console.log('✅ [API] Qwen响应成功');
+    console.log('📝 [API] AI回复长度:', aiResponse.length, '字符');
+    
+    const response = {
       success: true,
       response: aiResponse,
       timestamp: new Date().toISOString()
-    });
+    };
+    
+    console.log('📤 [API] 发送响应到前端');
+    res.json(response);
 
   } catch (error) {
-    console.error('Error in chat API:', error);
+    console.error('❌ [API] Chat API错误:', error);
     res.status(500).json({ 
       error: 'AI助手暂时不可用，请稍后再试',
       details: error.message 

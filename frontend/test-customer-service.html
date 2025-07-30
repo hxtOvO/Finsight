@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人工客服测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #db0011;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #ff4757;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🧪 人工客服功能测试</h1>
+        
+        <div class="test-section">
+            <h3>1. 测试API连接</h3>
+            <button onclick="testAPI()">测试 API 连接</button>
+            <div id="apiLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>2. 模拟前端调用</h3>
+            <input type="text" id="testMessage" placeholder="输入测试消息" value="你好，这是测试消息">
+            <button onclick="testFrontendCall()">发送消息（模拟前端）</button>
+            <div id="frontendLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>3. 检查网络请求</h3>
+            <p>请打开浏览器开发者工具的Network面板，然后点击下面的按钮:</p>
+            <button onclick="testNetworkCall()">发送网络请求（查看Network）</button>
+            <div id="networkLog" class="log"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>4. 控制台日志</h3>
+            <div id="consoleLog" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // 重写console.log来显示在页面上
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        function addToConsoleLog(message, type = 'log') {
+            const consoleLog = document.getElementById('consoleLog');
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black';
+            consoleLog.innerHTML += `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            addToConsoleLog(args.join(' '), 'log');
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            addToConsoleLog(args.join(' '), 'error');
+        };
+
+        // 测试1: API连接
+        async function testAPI() {
+            const apiLog = document.getElementById('apiLog');
+            apiLog.innerHTML = '开始测试API连接...<br>';
+            
+            try {
+                console.log('=== 测试API连接 ===');
+                
+                const response = await fetch('http://localhost:3000/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: 'API测试消息' })
+                });
+                
+                console.log('API响应状态:', response.status);
+                apiLog.innerHTML += `API响应状态: ${response.status}<br>`;
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('API响应数据:', data);
+                
+                if (data.success) {
+                    apiLog.innerHTML += `✅ API连接成功!<br>`;
+                    apiLog.innerHTML += `Qwen回复: ${data.response.substring(0, 100)}...<br>`;
+                } else {
+                    apiLog.innerHTML += `❌ API返回失败: ${JSON.stringify(data)}<br>`;
+                }
+                
+            } catch (error) {
+                console.error('API测试失败:', error);
+                apiLog.innerHTML += `❌ API测试失败: ${error.message}<br>`;
+            }
+        }
+
+        // 测试2: 模拟前端调用
+        async function testFrontendCall() {
+            const frontendLog = document.getElementById('frontendLog');
+            const message = document.getElementById('testMessage').value;
+            
+            frontendLog.innerHTML = '开始模拟前端调用...<br>';
+            
+            try {
+                console.log('=== 模拟前端callCustomerQwenAPI函数 ===');
+                console.log('用户消息:', message);
+                
+                frontendLog.innerHTML += `发送消息: ${message}<br>`;
+                
+                // 模拟 callCustomerQwenAPI 函数
+                const response = await fetch('http://localhost:3000/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: message })
+                });
+
+                console.log('API响应状态:', response.status);
+                frontendLog.innerHTML += `API响应状态: ${response.status}<br>`;
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('API响应数据:', data);
+                
+                if (data.success) {
+                    const aiResponse = data.response;
+                    console.log('AI回复:', aiResponse);
+                    frontendLog.innerHTML += `✅ 前端调用成功!<br>`;
+                    frontendLog.innerHTML += `AI回复: ${aiResponse.substring(0, 200)}...<br>`;
+                } else {
+                    console.error('API返回失败:', data);
+                    frontendLog.innerHTML += `❌ API返回失败: ${JSON.stringify(data)}<br>`;
+                }
+                
+            } catch (error) {
+                console.error('前端调用失败:', error);
+                frontendLog.innerHTML += `❌ 前端调用失败: ${error.message}<br>`;
+            }
+        }
+
+        // 测试3: 网络请求
+        async function testNetworkCall() {
+            const networkLog = document.getElementById('networkLog');
+            networkLog.innerHTML = '发送网络请求中...<br>';
+            
+            try {
+                console.log('=== 发送网络请求测试 ===');
+                
+                const startTime = Date.now();
+                
+                const response = await fetch('http://localhost:3000/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ message: '网络测试消息' })
+                });
+                
+                const endTime = Date.now();
+                const duration = endTime - startTime;
+                
+                networkLog.innerHTML += `请求耗时: ${duration}ms<br>`;
+                networkLog.innerHTML += `响应状态: ${response.status}<br>`;
+                networkLog.innerHTML += `响应头: ${JSON.stringify([...response.headers.entries()])}<br>`;
+                
+                const text = await response.text();
+                networkLog.innerHTML += `响应内容: ${text.substring(0, 300)}...<br>`;
+                
+                console.log('网络请求完成');
+                
+            } catch (error) {
+                console.error('网络请求失败:', error);
+                networkLog.innerHTML += `❌ 网络请求失败: ${error.message}<br>`;
+            }
+        }
+
+        // 页面加载完成后运行一些基本检测
+        window.addEventListener('load', function() {
+            console.log('测试页面加载完成');
+            console.log('当前URL:', window.location.href);
+            console.log('fetch函数可用:', typeof fetch !== 'undefined');
+        });
+    </script>
+</body>
+</html>
