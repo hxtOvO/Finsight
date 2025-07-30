@@ -1073,12 +1073,6 @@
                       <div style="text-align:center; padding:20px; color:#9ca3af;">
                         <div style="margin-bottom:8px;">💬</div>
                         <div>Ask me anything about your portfolio or market trends!</div>
-                        <button onclick="getMarketAnalysis()" 
-                          style="margin-top:12px; padding:8px 16px; background:#10b981; color:white; border:none; border-radius:8px; font-size:13px; cursor:pointer; transition:background 0.2s;"
-                          onmouseover="this.style.background='#059669'"
-                          onmouseout="this.style.background='#10b981'">
-                          📊 Get Market Analysis
-                        </button>
                       </div>
                     </div>
                     
@@ -1947,66 +1941,6 @@
         sendBtn.disabled = false;
         sendBtn.textContent = 'Send';
         chatInput.focus();
-      }
-    }
-
-    // 获取市场分析的函数
-    async function getMarketAnalysis() {
-      const chatMessages = document.getElementById('chatMessages');
-      
-      // 添加加载消息
-      addChatMessage('正在获取市场分析...', true);
-      
-      try {
-        const response = await fetch('/api/market-analysis', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        
-        if (data.success) {
-          // 添加市场数据摘要
-          let marketSummary = '📊 **实时市场数据**\n\n';
-          
-          if (data.marketData.marketIndices && data.marketData.marketIndices.length > 0) {
-            marketSummary += '**主要指数:**\n';
-            data.marketData.marketIndices.forEach(index => {
-              const trend = index.changePercent >= 0 ? '📈' : '📉';
-              marketSummary += `- ${index.symbol}: $${index.price?.toFixed(2) || 'N/A'} ${trend} ${index.changePercent?.toFixed(2) || 'N/A'}%\n`;
-            });
-            marketSummary += '\n';
-          }
-          
-          if (data.marketData.popularStocks && data.marketData.popularStocks.length > 0) {
-            marketSummary += '**热门股票:**\n';
-            data.marketData.popularStocks.slice(0, 5).forEach(stock => {
-              const trend = stock.changePercent >= 0 ? '📈' : '📉';
-              marketSummary += `- ${stock.symbol}: $${stock.price?.toFixed(2) || 'N/A'} ${trend} ${stock.changePercent?.toFixed(2) || 'N/A'}%\n`;
-            });
-            marketSummary += '\n';
-          }
-          
-          marketSummary += `*数据更新时间: ${new Date(data.timestamp).toLocaleString()}*\n\n`;
-          
-          // 先显示市场数据摘要
-          addChatMessage(marketSummary);
-          
-          // 然后显示AI分析
-          addChatMessage(data.aiAnalysis);
-          
-        } else {
-          addChatMessage('抱歉，无法获取市场分析。请稍后再试。');
-        }
-      } catch (error) {
-        console.error('Market analysis error:', error);
-        addChatMessage('获取市场分析时出现错误，请检查网络连接或稍后再试。');
       }
     }
 

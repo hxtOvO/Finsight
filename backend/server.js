@@ -335,10 +335,191 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 //   }
 // });
 const axios = require('axios');
+const { Ollama } = require('ollama');
 
 // 配置信息
 const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
+
+// Ollama配置
+const ollama = new Ollama({ host: 'http://localhost:11434' });
+const QWEN_MODEL = 'qwen2.5:3b';
+
+// LLM聊天函数
+async function chatWithQwen(userMessage, financialContext) {
+  try {
+    console.log('🤖 开始调用Qwen AI...');
+    
+    // 构建交易推荐信息字符串
+    let tradingRecommendationsText = '';
+    if (financialContext.tradingRecommendations && financialContext.tradingRecommendations.length > 0) {
+      tradingRecommendationsText = '\n📊 Trading Recommendations (Top 10):\n';
+      financialContext.tradingRecommendations.forEach(rec => {
+        const actionEmoji = rec.action === 'BUY' ? '🟢' : rec.action === 'SELL' ? '🔴' : '🟡';
+        tradingRecommendationsText += `- ${rec.symbol}: ${actionEmoji} ${rec.action} (Score: ${rec.score}, Confidence: ${(rec.confidence * 100).toFixed(0)}%, Analysts: ${rec.total_analysts})\n`;
+      });
+      tradingRecommendationsText += '\n';
+    }
+    
+    // 构建Featured Stocks信息字符串
+    let featuredStocksText = '';
+    if (financialContext.featuredStocks && financialContext.featuredStocks.length > 0) {
+      featuredStocksText = '\n⭐ Featured Stocks Portfolio:\n';
+      financialContext.featuredStocks.forEach(stock => {
+        const changeEmoji = stock.changePercent >= 0 ? '📈' : '📉';
+        featuredStocksText += `- ${stock.symbol}: $${stock.price} ${changeEmoji} ${stock.changePercent}% (Updated: ${new Date(stock.lastUpdated).toLocaleDateString()})\n`;
+      });
+      featuredStocksText += '\n';
+    }
+    
+    // 构建投资组合趋势信息
+    let portfolioTrendText = '';
+    if (financialContext.portfolioTrend && financialContext.portfolioTrend.length > 0) {
+      portfolioTrendText = '\n📈 Portfolio Trend (Last 7 Days):\n';
+      financialContext.portfolioTrend.forEach(trend => {
+        portfolioTrendText += `- ${trend.date}: $${trend.totalValue.toFixed(2)}\n`;
+      });
+      const firstValue = financialContext.portfolioTrend[0]?.totalValue || 0;
+      const lastValue = financialContext.portfolioTrend[financialContext.portfolioTrend.length - 1]?.totalValue || 0;
+      const weeklyChange = firstValue > 0 ? ((lastValue - firstValue) / firstValue * 100).toFixed(2) : 0;
+      portfolioTrendText += `Weekly Change: ${weeklyChange}%\n\n`;
+    }
+
+    const systemPrompt = `You are FinSight's professional financial assistant with access to comprehensive portfolio and market data.
+
+👤 User's Portfolio Summary:
+- Total Assets: $${financialContext.portfolio.total_value || 0}
+- Gain/Loss: $${financialContext.portfolio.gain_loss || 0} (${financialContext.portfolio.gain_loss_percent || 0}%)
+- Asset Allocation: Cash $${financialContext.assetAllocation.cash}, Stocks $${financialContext.assetAllocation.stock}, Bonds $${financialContext.assetAllocation.bond}, Other $${financialContext.assetAllocation.other}
+
+📈 User's Stock Holdings:
+${financialContext.stockHoldings.map(s => `- ${s.symbol}: ${s.shares} shares @ $${s.currentPrice} (${s.changePercent}%)`).join('\n')}
+${featuredStocksText}${tradingRecommendationsText}${portfolioTrendText}
+📊 Market Summary:
+- Total Featured Stocks: ${financialContext.marketSummary?.totalFeaturedStocks || 0}
+- Total Recommendations Available: ${financialContext.marketSummary?.totalRecommendations || 0}
+- Average Recommendation Score: ${financialContext.marketSummary?.avgRecommendationScore || 0}
+
+As a professional financial advisor with access to real-time data, please:
+1. Provide specific, data-driven analysis using portfolio data, trading recommendations, and market trends
+2. Reply in the same language as the user's question (English, Chinese, or other languages)
+3. Use professional but friendly tone with relevant emojis
+4. Include risk warnings for investment advice
+5. Reference specific trading recommendations when relevant to user's questions
+6. Compare user's holdings with market recommendations when applicable
+7. Consider portfolio trends and recent performance in your analysis
+8. Provide actionable insights based on the comprehensive data available`;
+
+    console.log('📤 发送请求到Qwen模型...');
+    const response = await ollama.chat({
+      model: QWEN_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userMessage }
+      ],
+      stream: false
+    });
+
+    console.log('✅ Qwen响应成功');
+    return response.message.content;
+  } catch (error) {
+    console.error('❌ Qwen调用失败:', error);
+    
+    if (error.message.includes('model')) {
+      return '抱歉，AI助手暂时不可用。请确保Qwen模型已安装。您可以运行：ollama pull qwen2.5:3b';
+    } else if (error.message.includes('ECONNREFUSED') || error.message.includes('connect')) {
+      return '❌ 无法连接到AI服务。请确保Ollama服务正在运行。您可以在终端运行：ollama serve';
+    } else if (error.message.includes('timeout')) {
+      return '⏱️ AI服务响应超时，请稍后再试。';
+    } else {
+      return `❌ AI服务出现错误：${error.message}。请稍后再试。`;
+    }
+  }
+}
+
+// LLM辅助函数 - 安全的数据库查询
+async function getFinancialDataForLLM() {
+  try {
+    // 获取投资组合概览
+    const [portfolioData] = await db.execute('SELECT * FROM portfolio LIMIT 1');
+    
+    // 获取资产分配
+    const [currentAssets] = await db.execute('SELECT * FROM current_assets');
+    
+    // 获取关注股票（扩展获取更多信息）
+    const [featuredStocks] = await db.execute('SELECT symbol, price, change_percent, updated_at FROM featured_stocks ORDER BY updated_at DESC LIMIT 20');
+    
+    // 获取交易推荐数据
+    let tradingRecommendations = [];
+    try {
+      const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
+      const results = await Promise.all(promises);
+      tradingRecommendations = processRecommendationData(results);
+      console.log(`📊 获取了 ${tradingRecommendations.length} 个股票的交易推荐数据`);
+    } catch (error) {
+      console.warn('获取交易推荐数据失败:', error.message);
+      tradingRecommendations = [];
+    }
+    
+    // 获取最近的资产历史数据（过去7天）
+    const [recentAssetHistory] = await db.execute(
+      'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date DESC LIMIT 7'
+    );
+    
+    // 计算资产分配汇总
+    const assetSummary = {
+      cash: currentAssets.filter(a => a.type === 'cash').reduce((sum, a) => sum + Number(a.amount), 0),
+      stock: 0,
+      bond: currentAssets.filter(a => a.type === 'bond').reduce((sum, a) => sum + Number(a.amount), 0),
+      other: currentAssets.filter(a => a.type === 'other').reduce((sum, a) => sum + Number(a.amount), 0)
+    };
+    
+    // 计算股票价值
+    const stockHoldings = currentAssets.filter(a => a.type === 'stock');
+    if (stockHoldings.length > 0) {
+      for (const holding of stockHoldings) {
+        const stockPrice = featuredStocks.find(s => s.symbol === holding.symbol)?.price || 0;
+        assetSummary.stock += Number(holding.amount) * Number(stockPrice);
+      }
+    }
+    
+    // 计算总价值趋势
+    const portfolioTrend = recentAssetHistory.map(row => ({
+      date: row.date,
+      totalValue: Number(row.cash_value || 0) + Number(row.stock_value || 0) + Number(row.bond_value || 0) + Number(row.other_value || 0)
+    })).reverse(); // 按时间正序
+    
+    return {
+      portfolio: portfolioData[0] || {},
+      assetAllocation: assetSummary,
+      stockHoldings: stockHoldings.map(h => ({
+        symbol: h.symbol,
+        shares: h.amount,
+        currentPrice: featuredStocks.find(s => s.symbol === h.symbol)?.price || 0,
+        changePercent: featuredStocks.find(s => s.symbol === h.symbol)?.change_percent || 0,
+        lastUpdated: featuredStocks.find(s => s.symbol === h.symbol)?.updated_at || null
+      })),
+      featuredStocks: featuredStocks.map(stock => ({
+        symbol: stock.symbol,
+        price: stock.price,
+        changePercent: stock.change_percent,
+        lastUpdated: stock.updated_at
+      })),
+      tradingRecommendations: tradingRecommendations.slice(0, 10), // 提供前10个推荐
+      portfolioTrend: portfolioTrend,
+      marketSummary: {
+        totalFeaturedStocks: featuredStocks.length,
+        totalRecommendations: tradingRecommendations.length,
+        avgRecommendationScore: tradingRecommendations.length > 0 
+          ? (tradingRecommendations.reduce((sum, r) => sum + r.score, 0) / tradingRecommendations.length).toFixed(2)
+          : 0
+      }
+    };
+  } catch (error) {
+    console.error('Error getting financial data for LLM:', error);
+    return null;
+  }
+}
 
 //获取featured栏目股票列表（查）
 app.get('/api/featured-stocks', async (req, res) => {
@@ -814,6 +995,41 @@ app.put('/api/assets/:type', async (req, res) => {
   } catch (error) {
     console.error('Error updating asset:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+
+// LLM Chat API
+app.post('/api/chat', async (req, res) => {
+  const { message } = req.body;
+  
+  if (!message || message.trim().length === 0) {
+    return res.status(400).json({ error: '请输入您的问题' });
+  }
+
+  try {
+    // 获取用户财务数据
+    const financialData = await getFinancialDataForLLM();
+    
+    if (!financialData) {
+      return res.status(500).json({ error: '无法获取财务数据' });
+    }
+
+    // 调用Qwen进行对话
+    const aiResponse = await chatWithQwen(message.trim(), financialData);
+    
+    res.json({
+      success: true,
+      response: aiResponse,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('Error in chat API:', error);
+    res.status(500).json({ 
+      error: 'AI助手暂时不可用，请稍后再试',
+      details: error.message 
+    });
   }
 });
 
