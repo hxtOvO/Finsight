@@ -1205,6 +1205,49 @@ app.put('/api/assets/:type', async (req, res) => {
       [today, newTotal, 'all', newTotal]
     );
 
+    // ====================================================================
+    // *** 新增/更新的逻辑：将扇形图数据（current_assets的各项明细）更新到 asset_history 表中今天的记录 ***
+    // 重新计算并获取所有资产类型的当前总值（明细）
+    const [allCurrentAssets] = await db.execute('SELECT * FROM current_assets');
+    const todayCashValue = allCurrentAssets.filter(r => r.type === 'cash').reduce((sum, r) => sum + Number(r.amount), 0);
+    const todayBondValue = allCurrentAssets.filter(r => r.type === 'bond').reduce((sum, r) => sum + Number(r.amount), 0);
+    const todayOtherValue = allCurrentAssets.filter(r => r.type === 'other').reduce((sum, r) => sum + Number(r.amount), 0);
+
+    let todayStockValue = 0;
+    const todayStockRows = allCurrentAssets.filter(r => r.type === 'stock');
+    if (todayStockRows.length > 0) {
+      const symbols = todayStockRows.map(r => r.symbol);
+      if (symbols.length > 0) {
+        const placeholders = symbols.map(() => '?').join(',');
+        const [prices] = await db.execute(`SELECT symbol, price FROM featured_stocks WHERE symbol IN (${placeholders})`, symbols);
+        const priceMap = {};
+        prices.forEach(p => { priceMap[p.symbol] = Number(p.price); });
+        todayStockValue = todayStockRows.reduce((sum, r) => {
+          const price = priceMap[r.symbol] || 0;
+          return sum + Number(r.amount) * price;
+        }, 0);
+      }
+    }
+
+    // 使用 ON DUPLICATE KEY UPDATE 确保：
+    // 如果今天的数据已存在，则更新它；如果不存在，则插入新记录。
+    await db.execute(
+      'INSERT INTO asset_history (date, cash_value, stock_value, bond_value, other_value) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE cash_value = ?, stock_value = ?, bond_value = ?, other_value = ?',
+      [
+        today,
+        parseFloat(todayCashValue.toFixed(2)),
+        parseFloat(todayStockValue.toFixed(2)),
+        parseFloat(todayBondValue.toFixed(2)),
+        parseFloat(todayOtherValue.toFixed(2)),
+        parseFloat(todayCashValue.toFixed(2)), // ON DUPLICATE KEY UPDATE 的值
+        parseFloat(todayStockValue.toFixed(2)),
+        parseFloat(todayBondValue.toFixed(2)),
+        parseFloat(todayOtherValue.toFixed(2))
+      ]
+    );
+    console.log(`✅ ${today} 的 asset_history 记录已更新/插入，反映最新资产分配。`);
+    // ====================================================================
+
     res.json({
       success: true,
       updatedAssetType: type,

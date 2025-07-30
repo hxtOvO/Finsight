@@ -1320,16 +1320,21 @@
   <script>
     // Featured Stocks JS
     // Allocation Pie Chart 渲染
+    let allocationChartInstance = null; // 用于存储饼图实例
+    let selectedAssetChartInstance = null; // 用于存储左下角折线图实例
+
     document.addEventListener('DOMContentLoaded', function() {
       const ctx = document.getElementById('allocationChart').getContext('2d');
       const cathayColors = ['#006560', '#5b7d79', '#c1b89a', '#e9e9e8'];
+      let assetLabels = []; // 存储资产类型标签
+
       fetch('/api/assets')
         .then(res => res.json())
         .then(assetData => {
-          const labels = assetData.map(a => a.asset_type);
+          assetLabels = assetData.map(a => a.asset_type); // 更新全局变量
           const values = assetData.map(a => a.value);
           const data = {
-            labels,
+            labels: assetLabels,
             datasets: [{
               data: values,
               backgroundColor: cathayColors,
@@ -1337,7 +1342,7 @@
               borderColor: '#fff',
             }]
           };
-          new Chart(ctx, {
+          allocationChartInstance = new Chart(ctx, {
             type: 'pie',
             data,
             options: {
@@ -1348,11 +1353,182 @@
                   titleFont: { size: 22 },
                   padding: 12
                 }
+              },
+              // 在饼图的 onClick 事件中
+onClick: (event, elements) => {
+  if (elements.length > 0) {
+    const clickedElementIndex = elements[0].index;
+    // 将 assetLabels[clickedElementIndex] 转换为小写
+    const selectedAssetType = assetLabels[clickedElementIndex].toLowerCase();
+    console.log('Clicked asset type:', selectedAssetType);
+    updateSelectedAssetChart(selectedAssetType, '1m');
+                }
               }
             }
           });
         });
     });
+
+    // 模拟获取资产历史数据
+    function getAssetHistoricalData(assetType, range) {
+      const dates = [];
+      const values = [];
+      const today = new Date();
+      let days = 0;
+
+      if (range === '1m') {
+        days = 30;
+      } else if (range === '7d') {
+        days = 7;
+      } else if (range === '6m') {
+        days = 180;
+      }
+
+      let startValue = 10000; // 初始值
+
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(today.getDate() - i);
+        dates.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+
+        // 模拟数据波动
+        let change = (Math.random() - 0.5) * 500; // 随机增减
+        if (assetType === 'Stock') {
+          change *= 2; // 股票波动更大
+        } else if (assetType === 'Bond') {
+          change *= 0.5; // 债券波动更小
+        } else if (assetType === 'Cash') {
+          change = 0; // 现金通常不变
+        }
+        startValue += change;
+        values.push(Math.max(0, startValue)); // 确保值不为负
+      }
+      return { dates, values };
+    }
+
+// 假设 fetchSelectedAssetPerformanceData 函数已经定义在全局作用域或可访问的模块中
+// async function fetchSelectedAssetPerformanceData(assetType, range) { ... }
+
+// 更新左下角折线图
+async function updateSelectedAssetChart(assetType, range) { // 添加 async 关键字
+  const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+
+  // *** 关键修改：调用 fetchSelectedAssetPerformanceData 从后端获取数据 ***
+  let data = [];
+  try {
+    data = await fetchSelectedAssetPerformanceData(assetType, range);
+  } catch (error) {
+    console.error("Failed to load historical data from API, showing empty chart.", error);
+    // 可以在这里添加用户友好的提示，例如在图表区域显示“数据加载失败”
+    if (selectedAssetChartInstance) {
+      selectedAssetChartInstance.destroy(); // 销毁旧图表实例
+      selectedAssetChartInstance = null; // 清空实例
+    }
+    // 返回，不尝试绘制图表
+    return;
+  }
+
+  // 检查返回的数据是否为空或无效
+  if (!data || data.length === 0) {
+    console.warn(`No historical data found for ${assetType} in ${range}.`);
+    if (selectedAssetChartInstance) {
+      selectedAssetChartInstance.destroy(); // 销毁旧图表实例
+      selectedAssetChartInstance = null; // 清空实例
+    }
+    // 可以显示一个空状态或者提示信息
+    return;
+  }
+
+  // 从后端返回的数据中提取日期和值
+  // 假设后端返回的数据格式为 [{ date: 'YYYY-MM-DD', value: number }, ...]
+  const dates = data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+  const values = data.map(item => item.value);
+
+  if (selectedAssetChartInstance) {
+    selectedAssetChartInstance.destroy(); // 销毁旧图表实例
+  }
+
+  selectedAssetChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: `${assetType} Value (${range})`,
+        data: values,
+        borderColor: '#db0011',
+        backgroundColor: 'rgba(219, 0, 17, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 5,
+        pointBackgroundColor: '#db0011',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top',
+          labels: {
+            font: {
+              size: 14,
+              weight: 'bold'
+            }
+          }
+        },
+        tooltip: {
+          mode: 'index',
+          intersect: false,
+          bodyFont: { size: 14 },
+          titleFont: { size: 14, weight: 'bold' },
+          padding: 10,
+          callbacks: {
+            label: function(context) {
+              return `$${context.parsed.y.toFixed(2)}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: {
+            display: false
+          },
+          ticks: {
+            autoSkip: true,
+            maxRotation: 0,
+            minRotation: 0,
+            font: {
+              size: 12
+            }
+          }
+        },
+        y: {
+          beginAtZero: false,
+          grid: {
+            color: '#f0f0f0'
+          },
+          ticks: {
+            callback: function(value) {
+              return `$${value.toLocaleString()}`;
+            },
+            font: {
+              size: 12
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// 注意：getAssetHistoricalData 函数现在可以被移除或注释掉，因为它不再被使用。
+// function getAssetHistoricalData(assetType, range) { ... }
+
     // Allocation Pie Chart 现在始终显示在右上角，无需切换隐藏
     const defaultSymbols = ['AAPL', 'NVDA', 'META'];
     async function fetchFeaturedStocks() {
