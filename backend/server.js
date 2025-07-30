@@ -2215,11 +2215,6 @@ app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
-  await initDatabase();
-});
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
