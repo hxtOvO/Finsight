@@ -698,8 +698,8 @@ async function updateSelectedAssetChart(range = '7d') {
 
 async function fetchSelectedAssetPerformanceData(assetType, range) {
   try {
-    let assetType = 'stock';
-    let range = '1m';
+    //let assetType = 'stock';
+    //let range = '1m';
     console.log(`🌐 API请求 ${assetType} 资产 ${range} 数据...`);
     const response = await fetch(`api/assets/${assetType}/performance/${range}`);
     if (!response.ok) throw new Error('Failed to fetch selected asset performance data');
