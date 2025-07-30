@@ -221,12 +221,14 @@ function getLabelsFromData(data, range) {
     if (range === '6m') {
         return data.map(item => {
             const date = new Date(item.date);
-            // 手动构建 UTC 格式的日期字符串
+            // 对于6个月范围，通常显示月份和年份，日期加1的意义不大，保持不变
             return `${date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${date.getUTCFullYear()}`;
         });
     } else {
         return data.map(item => {
             const date = new Date(item.date);
+            // 将日期加1天
+            date.setDate(date.getDate() + 1); // 关键修改：日期加1
             // 手动构建 UTC 格式的日期字符串
             return `${date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${date.getUTCDate()}`;
         });
