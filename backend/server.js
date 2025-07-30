@@ -447,7 +447,7 @@ const QWEN_MODEL = 'qwen2.5:3b';
 async function chatWithQwen(userMessage, financialContext) {
   try {
     console.log('🤖 开始调用Qwen AI...');
-    
+
     // 构建交易推荐信息字符串
     let tradingRecommendationsText = '';
     if (financialContext.tradingRecommendations && financialContext.tradingRecommendations.length > 0) {
@@ -458,7 +458,7 @@ async function chatWithQwen(userMessage, financialContext) {
       });
       tradingRecommendationsText += '\n';
     }
-    
+
     // 构建Featured Stocks信息字符串
     let featuredStocksText = '';
     if (financialContext.featuredStocks && financialContext.featuredStocks.length > 0) {
@@ -469,7 +469,7 @@ async function chatWithQwen(userMessage, financialContext) {
       });
       featuredStocksText += '\n';
     }
-    
+
     // 构建投资组合趋势信息
     let portfolioTrendText = '';
     if (financialContext.portfolioTrend && financialContext.portfolioTrend.length > 0) {
@@ -522,7 +522,7 @@ As a professional financial advisor with access to real-time data, please:
     return response.message.content;
   } catch (error) {
     console.error('❌ Qwen调用失败:', error);
-    
+
     if (error.message.includes('model')) {
       return '抱歉，AI助手暂时不可用。请确保Qwen模型已安装。您可以运行：ollama pull qwen2.5:3b';
     } else if (error.message.includes('ECONNREFUSED') || error.message.includes('connect')) {
@@ -540,13 +540,13 @@ async function getFinancialDataForLLM() {
   try {
     // 获取投资组合概览
     const [portfolioData] = await db.execute('SELECT * FROM portfolio LIMIT 1');
-    
+
     // 获取资产分配
     const [currentAssets] = await db.execute('SELECT * FROM current_assets');
-    
+
     // 获取关注股票（扩展获取更多信息）
     const [featuredStocks] = await db.execute('SELECT symbol, price, change_percent, updated_at FROM featured_stocks ORDER BY updated_at DESC LIMIT 20');
-    
+
     // 获取交易推荐数据
     let tradingRecommendations = [];
     try {
@@ -558,12 +558,12 @@ async function getFinancialDataForLLM() {
       console.warn('获取交易推荐数据失败:', error.message);
       tradingRecommendations = [];
     }
-    
+
     // 获取最近的资产历史数据（过去7天）
     const [recentAssetHistory] = await db.execute(
       'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date DESC LIMIT 7'
     );
-    
+
     // 计算资产分配汇总
     const assetSummary = {
       cash: currentAssets.filter(a => a.type === 'cash').reduce((sum, a) => sum + Number(a.amount), 0),
@@ -571,7 +571,7 @@ async function getFinancialDataForLLM() {
       bond: currentAssets.filter(a => a.type === 'bond').reduce((sum, a) => sum + Number(a.amount), 0),
       other: currentAssets.filter(a => a.type === 'other').reduce((sum, a) => sum + Number(a.amount), 0)
     };
-    
+
     // 计算股票价值
     const stockHoldings = currentAssets.filter(a => a.type === 'stock');
     if (stockHoldings.length > 0) {
@@ -580,13 +580,13 @@ async function getFinancialDataForLLM() {
         assetSummary.stock += Number(holding.amount) * Number(stockPrice);
       }
     }
-    
+
     // 计算总价值趋势
     const portfolioTrend = recentAssetHistory.map(row => ({
       date: row.date,
       totalValue: Number(row.cash_value || 0) + Number(row.stock_value || 0) + Number(row.bond_value || 0) + Number(row.other_value || 0)
     })).reverse(); // 按时间正序
-    
+
     return {
       portfolio: portfolioData[0] || {},
       assetAllocation: assetSummary,
@@ -608,7 +608,7 @@ async function getFinancialDataForLLM() {
       marketSummary: {
         totalFeaturedStocks: featuredStocks.length,
         totalRecommendations: tradingRecommendations.length,
-        avgRecommendationScore: tradingRecommendations.length > 0 
+        avgRecommendationScore: tradingRecommendations.length > 0
           ? (tradingRecommendations.reduce((sum, r) => sum + r.score, 0) / tradingRecommendations.length).toFixed(2)
           : 0
       }
@@ -1126,7 +1126,8 @@ async function getMarketListWithCache(listType) {
 
   // 2. 否则拉新数据
   const data = await fetchMarketList(listType);
-  const top10 = extractTop10Quotes(data.body || []);
+  const top10 = extractTop10Quotes(data.body || [], listType);
+
 
   // 3. 写入缓存（REPLACE 覆盖旧数据）
   for (const item of top10) {
@@ -1167,7 +1168,16 @@ async function fetchMarketList(listType) {
   return response.data;
 }
 
-function extractTop10Quotes(quotes) {
+function extractTop10Quotes(quotes, listType) {
+  // 根据 listType 排序
+  if (listType === 'day_gainers') {
+    quotes.sort((a, b) => b.regularMarketChangePercent - a.regularMarketChangePercent);
+  } else if (listType === 'day_losers') {
+    quotes.sort((a, b) => a.regularMarketChangePercent - b.regularMarketChangePercent);
+  } else if (listType === 'most_actives') {
+    quotes.sort((a, b) => b.regularMarketVolume - a.regularMarketVolume);
+  }
+
   return quotes.slice(0, 10).map(item => ({
     symbol: item.symbol,
     name: item.shortName || item.longName,
@@ -1179,6 +1189,7 @@ function extractTop10Quotes(quotes) {
     fiftyTwoWeekRange: item.fiftyTwoWeekRange
   }));
 }
+
 // 涨幅榜（day_gainers）-调用接口
 // app.get('/api/market/gainers', async (req, res) => {
 //   try {
@@ -1737,9 +1748,9 @@ app.put('/api/assets/:type', async (req, res) => {
 app.post('/api/chat', async (req, res) => {
   console.log('🔥 [API] 收到 /api/chat 请求');
   console.log('🔥 [API] 请求体:', req.body);
-  
+
   const { message } = req.body;
-  
+
   if (!message || message.trim().length === 0) {
     console.log('❌ [API] 消息为空');
     return res.status(400).json({ error: '请输入您的问题' });
@@ -1751,7 +1762,7 @@ app.post('/api/chat', async (req, res) => {
     console.log('📊 [API] 开始获取财务数据...');
     // 获取用户财务数据
     const financialData = await getFinancialDataForLLM();
-    
+
     if (!financialData) {
       console.log('❌ [API] 财务数据获取失败');
       return res.status(500).json({ error: '无法获取财务数据' });
@@ -1759,27 +1770,27 @@ app.post('/api/chat', async (req, res) => {
 
     console.log('✅ [API] 财务数据获取成功');
     console.log('🤖 [API] 开始调用Qwen...');
-    
+
     // 调用Qwen进行对话
     const aiResponse = await chatWithQwen(message.trim(), financialData);
-    
+
     console.log('✅ [API] Qwen响应成功');
     console.log('📝 [API] AI回复长度:', aiResponse.length, '字符');
-    
+
     const response = {
       success: true,
       response: aiResponse,
       timestamp: new Date().toISOString()
     };
-    
+
     console.log('📤 [API] 发送响应到前端');
     res.json(response);
 
   } catch (error) {
     console.error('❌ [API] Chat API错误:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       error: 'AI助手暂时不可用，请稍后再试',
-      details: error.message 
+      details: error.message
     });
   }
 });
@@ -1964,7 +1975,7 @@ app.get('/api/performance/:range', async (req, res) => {
  */
 app.post('/api/assets/:type/add', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol, period, couponRate,description } = req.body;
+  const { amount, symbol, period, couponRate, description } = req.body;
 
   try {
     // 基础参数验证：确保amount有效
@@ -2071,10 +2082,10 @@ app.post('/api/assets/:type/add', async (req, res) => {
 
       // 记录操作历史
       await db.execute(
-          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
-          ['add', amount, description, type]
+        'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+        ['add', amount, description, type]
       );
-      
+
       // 计算并返回总资产
       const totalPortfolio = await calculateCurrentTotalValue();
       res.json({ success: true, totalPortfolio });
@@ -2167,7 +2178,7 @@ app.post('/api/assets/:type/add', async (req, res) => {
  */
 app.post('/api/assets/:type/reduce', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol,description } = req.body;
+  const { amount, symbol, description } = req.body;
 
   try {
     if (amount === undefined || amount === null) {
@@ -2253,8 +2264,8 @@ app.post('/api/assets/:type/reduce', async (req, res) => {
       await db.commit();
       // 记录操作历史
       await db.execute(
-          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
-          ['reduce', amount, description, type]
+        'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+        ['reduce', amount, description, type]
       );
       const totalPortfolio = await calculateCurrentTotalValue();
       res.json({ success: true, totalPortfolio });
@@ -2301,6 +2312,18 @@ app.get('/api/health', (req, res) => {
 
 
 // Start server
+app.listen(PORT, async () => {
+  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
+
+  try {
+    await initDatabase(); // 确保数据库表建好
+    await preloadRecommendationCache(); // 预加载推荐数据
+    console.log('✅ Recommendation cache preloaded');
+  } catch (err) {
+    console.error('❌ Failed to preload recommendation data:', err.message);
+  }
+});
+
 
 
 
@@ -2451,11 +2474,7 @@ app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
-  await initDatabase();
-});
+
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -2464,4 +2483,20 @@ process.on('SIGINT', async () => {
     console.log('🔌 MySQL connection closed.');
   }
   process.exit(0);
+});
+
+// GET /api/asset/history - 获取资产活动历史
+app.get('/api/asset/history', async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT id, operation_date, operation_type, amount, description, asset_type
+      FROM asset_activity_history
+      ORDER BY operation_date DESC
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching asset activity history:', error.message);
+    res.status(500).json({ error: 'Failed to fetch asset activity history' });
+  }
 });
