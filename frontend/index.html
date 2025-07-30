@@ -2326,25 +2326,35 @@
       }
     }
 
-    // 生成模拟涨幅榜数据
     function generateMockGainers() {
       const symbols = ['NVDA', 'TSLA', 'AMZN', 'GOOGL', 'MSFT', 'META', 'NFLX', 'AMD', 'CRM', 'PYPL'];
-      return symbols.map((symbol, index) => ({
-        symbol,
-        price: 150 + Math.random() * 200,
-        change: 2 + Math.random() * 8
-      }));
+      const baseGain = 10; // 最大涨幅
+      const gainStep = 0.7; // 平均每项减少的幅度
+
+      return symbols.map((symbol, index) => {
+        const fluctuation = (Math.random() - 0.5) * 0.8; // 随机扰动 ±0.4
+        const change = Math.max(0.5, baseGain - index * gainStep + fluctuation); // 保证最低为 0.5
+        const price = 150 + Math.random() * 200;
+        return { symbol, price, change };
+      });
     }
+
+
 
     // 生成模拟跌幅榜数据
     function generateMockLosers() {
       const symbols = ['UBER', 'SNAP', 'ZM', 'ROKU', 'SPOT', 'SQ', 'TWTR', 'PINS', 'DOCU', 'PTON'];
-      return symbols.map((symbol, index) => ({
-        symbol,
-        price: 50 + Math.random() * 100,
-        change: -(0.5 + Math.random() * 5)
-      }));
+      const baseDrop = -5; // 最大跌幅
+      const dropStep = 0.5;
+
+      return symbols.map((symbol, index) => {
+        const fluctuation = (Math.random() - 0.5) * 0.6; // ±0.3
+        const change = Math.min(-0.3, baseDrop + index * dropStep + fluctuation); // 保证最大不超过 -0.3
+        const price = 50 + Math.random() * 100;
+        return { symbol, price, change };
+      });
     }
+
 
     // 生成模拟推荐数据
     function generateMockRecommendations() {
