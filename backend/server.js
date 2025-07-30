@@ -137,6 +137,39 @@ async function createTables() {
       amount decimal(18,2) DEFAULT NULL
     )
   `;
+  const createRecommendTable = `
+  CREATE TABLE IF NOT EXISTS Recommend (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      symbol VARCHAR(10) NOT NULL UNIQUE,
+      period VARCHAR(20),
+      strong_buy INT,
+      buy INT,
+      hold INT,
+      sell INT,
+      strong_sell INT,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `;
+
+  const createMarketTable = `
+  CREATE TABLE IF NOT EXISTS Market (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    list_type VARCHAR(32) NOT NULL,
+    symbol VARCHAR(12) NOT NULL,
+    name VARCHAR(255),
+    price DECIMAL(12, 2),
+    \`change\` DECIMAL(12, 2),
+    change_percent DECIMAL(7, 4),
+    volume BIGINT,
+    market_cap BIGINT,
+    fifty_two_week_range VARCHAR(64),
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_list_symbol (list_type, symbol)
+  );
+  `;
+
+
+
 
   await db.execute(createPortfolioTable);
   // await db.execute(createAssetsTable); // 移除 assets 表的创建
@@ -144,6 +177,10 @@ async function createTables() {
   await db.execute(createFeaturedStocksTable);
   await db.execute(createCurrentAssetsTable);
   await db.execute(createBondTable);
+  await db.execute(createRecommendTable);
+  await db.execute(createMarketTable);
+
+
 
   console.log('✅ Database tables created successfully');
 }
@@ -387,7 +424,7 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
 const axios = require('axios');
 
 // 配置信息
-// const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd'; // 替换为你的实际API密钥
+const RAPIDAPI_KEY = '2eca160c32msh506e802cbfdce0bp1cc81ejsn3b0970b7d7cb'; // 替换为你的实际API密钥
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 //获取featured栏目股票列表（查）
@@ -630,11 +667,41 @@ app.post('/api/featured-stocks/add', async (req, res) => {
   }
 });
 
+//判断是否需要重新拉取
+function isStale(updatedAt) {
+  if (!updatedAt) return true; // 没有时间视为已过期
+
+  const updated = new Date(updatedAt);
+  const now = new Date();
+
+  const diffMs = now - updated;
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  return diffHours >= 24;
+}
+//缓存判断 + 拉新逻辑
+async function fetchRecommendationWithCache(symbol) {
+  const [rows] = await db.execute('SELECT * FROM Recommend WHERE symbol = ?', [symbol]);
+
+  if (rows.length > 0 && !isStale(rows[0].updated_at)) {
+    console.log(`Using cached recommendation for ${symbol}`);
+    return getProcessedRecommendation(symbol);
+  }
+
+  console.log(`🔄 [${symbol}] Cache missing or stale, fetching fresh data from API...`);
+
+  await fetchRecommendationTrend(symbol); // 会写入数据库
+
+  return getProcessedRecommendation(symbol);
+}
+
+
 //  固定的10个 symbol
 let SYMBOL_LIST = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
   'TSLA', 'META', 'NFLX', 'AMD', 'INTC'
 ];
+//调用接口后存数据库
 async function fetchRecommendationTrend(symbol) {
   try {
     const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
@@ -651,18 +718,109 @@ async function fetchRecommendationTrend(symbol) {
     const trendList = res.data?.body?.trend || [];
     const latest = trendList.length > 0 ? trendList[0] : null;
 
+    if (!latest) throw new Error('No recommendation data');
+
+    const { period, strongBuy, buy, hold, sell, strongSell } = latest;
+
+    // 插入或更新 MySQL
+    await db.execute(`
+      INSERT INTO recommend (symbol, period, strong_buy, buy, hold, sell, strong_sell)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        period = VALUES(period),
+        strong_buy = VALUES(strong_buy),
+        buy = VALUES(buy),
+        hold = VALUES(hold),
+        sell = VALUES(sell),
+        strong_sell = VALUES(strong_sell),
+        updated_at = CURRENT_TIMESTAMP
+    `, [symbol, period, strongBuy, buy, hold, sell, strongSell]);
+    console.log(`💾 [${symbol}] Data saved to database`);
+
+
     return {
       symbol,
-      recommendation: latest
+      period,
+      strongBuy,
+      buy,
+      hold,
+      sell,
+      strongSell
     };
   } catch (err) {
     console.error(`Error fetching recommendation trend for ${symbol}:`, err.message);
     return {
       symbol,
-      recommendation: null,
       error: err.message
     };
   }
+}
+// 启动时预加载 SYMBOL_LIST
+async function preloadRecommendationCache() {
+  console.log('🔄 Preloading recommendation data...');
+  for (const symbol of SYMBOL_LIST) {
+    try {
+      await fetchRecommendationWithCache(symbol);
+    } catch (err) {
+      console.error(`❌ Failed to preload ${symbol}:`, err.message);
+    }
+  }
+}
+
+// ✅ 立即执行预加载（可放到你 server 启动后执行的位置）
+
+
+
+//不存数据库每次调接口
+// async function fetchRecommendationTrend(symbol) {
+//   try {
+//     const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
+//       params: {
+//         ticker: symbol,
+//         module: 'recommendation-trend'
+//       },
+//       headers: {
+//         'x-rapidapi-key': RAPIDAPI_KEY,
+//         'x-rapidapi-host': RAPIDAPI_HOST
+//       }
+//     });
+
+//     const trendList = res.data?.body?.trend || [];
+//     const latest = trendList.length > 0 ? trendList[0] : null;
+
+//     return {
+//       symbol,
+//       recommendation: latest
+//     };
+//   } catch (err) {
+//     console.error(`Error fetching recommendation trend for ${symbol}:`, err.message);
+//     return {
+//       symbol,
+//       recommendation: null,
+//       error: err.message
+//     };
+//   }
+// }
+
+//从数据库查并格式化后处理
+async function getProcessedRecommendation(symbol) {
+  const [rows] = await db.execute('SELECT * FROM recommend WHERE symbol = ?', [symbol]);
+
+  if (rows.length === 0) return null;
+
+  const formatted = {
+    symbol: rows[0].symbol,
+    recommendation: {
+      period: rows[0].period,
+      strongBuy: rows[0].strong_buy,
+      buy: rows[0].buy,
+      hold: rows[0].hold,
+      sell: rows[0].sell,
+      strongSell: rows[0].strong_sell
+    }
+  };
+
+  return processRecommendationData([formatted])[0];
 }
 
 // 🤖 加权推荐算法
@@ -741,6 +899,68 @@ function processRecommendationData(rawData) {
   });
 }
 
+
+//*------------------------------Market Screener API----------------------------------------------------------*//
+function isWithin24Hours(updatedAt) {
+  const updatedTime = new Date(updatedAt).getTime();
+  const now = Date.now();
+  return now - updatedTime < 24 * 60 * 60 * 1000; // 小于 24 小时
+}
+
+async function getMarketListWithCache(listType) {
+  // 1. 查缓存
+  const [rows] = await db.execute(
+    `SELECT * FROM Market WHERE list_type = ? ORDER BY updated_at DESC`,
+    [listType]
+  );
+
+  const isValid = rows.length >= 10 && rows.every(row => isWithin24Hours(row.updated_at));
+
+  if (isValid) {
+    console.log(`[${listType}] Using cached market data from DB`);
+
+    return rows.map(row => ({
+      symbol: row.symbol,
+      name: row.name,
+      price: row.price,
+      change: row.change,
+      changePercent: row.change_percent,
+      volume: row.volume,
+      marketCap: row.market_cap,
+      fiftyTwoWeekRange: row.fifty_two_week_range
+    }));
+  }
+  console.log(`[${listType}] Cache missing or stale, fetching fresh data from API...`);
+
+  // 2. 否则拉新数据
+  const data = await fetchMarketList(listType);
+  const top10 = extractTop10Quotes(data.body || []);
+
+  // 3. 写入缓存（REPLACE 覆盖旧数据）
+  for (const item of top10) {
+    await db.execute(`
+      REPLACE INTO Market
+      (list_type, symbol, name, price,\`change\`, change_percent, volume, market_cap, fifty_two_week_range, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `, [
+      listType,
+      item.symbol,
+      item.name,
+      item.price,
+      item.change,
+      item.changePercent,
+      item.volume,
+      item.marketCap,
+      item.fiftyTwoWeekRange
+    ]);
+  }
+
+  return top10;
+}
+
+
+
+
 const market_API = 'https://yahoo-finance15.p.rapidapi.com/api/v1/markets/screener';
 
 
@@ -767,38 +987,70 @@ function extractTop10Quotes(quotes) {
     fiftyTwoWeekRange: item.fiftyTwoWeekRange
   }));
 }
-// ✅ 涨幅榜（day_gainers）
+// 涨幅榜（day_gainers）-调用接口
+// app.get('/api/market/gainers', async (req, res) => {
+//   try {
+//     const data = await fetchMarketList('day_gainers');
+//     const top10 = extractTop10Quotes(data.body || []);
+//     res.json(top10);
+//   } catch (error) {
+//     console.error('Error fetching gainers:', error.message);
+//     res.status(500).json({ error: 'Failed to fetch gainers' });
+//   }
+// });
+
+
+// 涨幅榜（day_gainers）-使用缓存
 app.get('/api/market/gainers', async (req, res) => {
   try {
-    const data = await fetchMarketList('day_gainers');
-    const top10 = extractTop10Quotes(data.body || []);
-    res.json(top10);
+    const result = await getMarketListWithCache('day_gainers');
+    res.json(result);
   } catch (error) {
     console.error('Error fetching gainers:', error.message);
     res.status(500).json({ error: 'Failed to fetch gainers' });
   }
 });
 
+//  跌幅榜（day_losers）--调用接口
+// app.get('/api/market/losers', async (req, res) => {
+//   try {
+//     const data = await fetchMarketList('day_losers');
+//     const top10 = extractTop10Quotes(data.body || []);
+//     res.json(top10);
+//   } catch (error) {
+//     console.error('Error fetching losers:', error.message);
+//     res.status(500).json({ error: 'Failed to fetch losers' });
+//   }
+// });
 
-
-// ✅ 跌幅榜（day_losers）
+// 跌幅榜（day_losers）--使用缓存
 app.get('/api/market/losers', async (req, res) => {
   try {
-    const data = await fetchMarketList('day_losers');
-    const top10 = extractTop10Quotes(data.body || []);
-    res.json(top10);
+    const result = await getMarketListWithCache('day_losers');
+    res.json(result);
   } catch (error) {
     console.error('Error fetching losers:', error.message);
     res.status(500).json({ error: 'Failed to fetch losers' });
   }
 });
 
-// ✅ 最活跃榜（most_actives）
+// 最活跃榜（most_actives）-调用接口
+// app.get('/api/market/most-active', async (req, res) => {
+//   try {
+//     const data = await fetchMarketList('most_actives');
+//     const top10 = extractTop10Quotes(data.body || []);
+//     res.json(top10);
+//   } catch (error) {
+//     console.error('Error fetching most actives:', error.message);
+//     res.status(500).json({ error: 'Failed to fetch most actives' });
+//   }
+// });
+
+// 最活跃榜（most_actives）-使用缓存
 app.get('/api/market/most-active', async (req, res) => {
   try {
-    const data = await fetchMarketList('most_actives');
-    const top10 = extractTop10Quotes(data.body || []);
-    res.json(top10);
+    const result = await getMarketListWithCache('most_actives');
+    res.json(result);
   } catch (error) {
     console.error('Error fetching most actives:', error.message);
     res.status(500).json({ error: 'Failed to fetch most actives' });
@@ -806,6 +1058,7 @@ app.get('/api/market/most-active', async (req, res) => {
 });
 
 
+//*------------------------------Market Screener API----------------------------------------------------------*//
 
 
 
@@ -823,44 +1076,47 @@ app.get('/api/market/most-active', async (req, res) => {
 
 
 
-// Get接口：返回所有 symbol 的推荐趋势（使用加权算法）
-/**
- * @swagger
- * /api/recommendation-trend:
- *   get:
- *     summary: 获取股票推荐趋势列表
- *     description: 返回预设股票列表的推荐趋势数据
- *     tags: [Recommendation Trends]
- *     responses:
- *       200:
- *         description: 成功返回趋势列表
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   symbol:
- *                     type: string
- *                     example: "AAPL"
- *                   recommendation:
- *                     type: object
- *                     description: 推荐趋势数据（如买入/卖出评级）
- *                   error:
- *                     type: string
- *                     nullable: true
- *                     example: null
- */
+
+//Get接口，从API查询数据再返回
+// app.get('/api/recommendation-trend', async (req, res) => {
+//   const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
+//   const results = await Promise.all(promises);
+
+//   // 使用加权算法处理数据
+//   const processedResults = processRecommendationData(results);
+
+//   res.json(processedResults);
+// });
+
+//Get接口：返回所有 symbol 的推荐趋势（使用数据库存储）
 app.get('/api/recommendation-trend', async (req, res) => {
-  const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
-  const results = await Promise.all(promises);
+  try {
+    const [rows] = await db.execute('SELECT * FROM Recommend ORDER BY symbol');
 
-  // 使用加权算法处理数据
-  const processedResults = processRecommendationData(results);
+    // 构建推荐数据结构（不含 updated_at）
+    const formatted = rows.map(row => ({
+      symbol: row.symbol,
+      recommendation: {
+        period: row.period,
+        strongBuy: row.strong_buy,
+        buy: row.buy,
+        hold: row.hold,
+        sell: row.sell,
+        strongSell: row.strong_sell
+      }
+    }));
 
-  res.json(processedResults);
+    const processed = processRecommendationData(formatted);
+
+    res.json(processed);
+  } catch (err) {
+    console.error('DB error:', err.message);
+    res.status(500).json({ error: 'Database query failed' });
+  }
 });
+
+
+
 //Post接口
 /**
  * @swagger
@@ -897,6 +1153,21 @@ app.get('/api/recommendation-trend', async (req, res) => {
  *       400:
  *         description: 缺少股票代码
  */
+// app.post('/api/recommendation-trend/add', async (req, res) => {
+//   const { symbol } = req.body;
+//   if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
+
+//   const cleanSymbol = symbol.trim().toUpperCase();
+
+//   if (!SYMBOL_LIST.includes(cleanSymbol)) {
+//     SYMBOL_LIST.push(cleanSymbol);
+//   }
+
+//   const result = await fetchRecommendationTrend(cleanSymbol);
+//   const processedResult = processRecommendationData([result])[0];
+
+//   res.json(processedResult);
+// });
 app.post('/api/recommendation-trend/add', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
@@ -907,10 +1178,18 @@ app.post('/api/recommendation-trend/add', async (req, res) => {
     SYMBOL_LIST.push(cleanSymbol);
   }
 
-  const result = await fetchRecommendationTrend(cleanSymbol);
-  const processedResult = processRecommendationData([result])[0];
+  try {
+    const result = await fetchRecommendationWithCache(cleanSymbol);
 
-  res.json(processedResult);
+    if (!result) {
+      return res.status(404).json({ error: 'Failed to get recommendation data' });
+    }
+
+    res.json(result);
+  } catch (err) {
+    console.error('POST /api/recommendation-trend/add error:', err.message);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 
@@ -1445,8 +1724,8 @@ app.post('/api/assets/:type/add', async (req, res) => {
     // 债券类型特有参数验证
     if (type === 'bond') {
       if (!period || !couponRate) {
-        return res.status(400).json({ 
-          error: '债券类型需要提供期限 (period) 和票面利率 (couponRate)' 
+        return res.status(400).json({
+          error: '债券类型需要提供期限 (period) 和票面利率 (couponRate)'
         });
       }
       // 验证period为正整数（匹配bond表的CHECK约束）
@@ -1472,19 +1751,19 @@ app.post('/api/assets/:type/add', async (req, res) => {
           return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
         }
         const [stockAsset] = await db.execute(
-          'SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', 
+          'SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?',
           [type, symbol]
         );
         if (stockAsset.length === 0) {
           const [result] = await db.execute(
-            'INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', 
+            'INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)',
             [type, symbol, numericAmount]
           );
           assetId = result.insertId;
         } else {
           const newAmount = Number(stockAsset[0].amount) + numericAmount;
           await db.execute(
-            'UPDATE current_assets SET amount = ? WHERE id = ?', 
+            'UPDATE current_assets SET amount = ? WHERE id = ?',
             [newAmount, stockAsset[0].id]
           );
           assetId = stockAsset[0].id;
@@ -1493,7 +1772,7 @@ app.post('/api/assets/:type/add', async (req, res) => {
         // 债券类型处理（新增bond表的amount字段插入）
         // 1. 插入基础资产记录到current_assets
         const [result] = await db.execute(
-          'INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', 
+          'INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)',
           [type, symbol || `BOND_${Date.now()}`, numericAmount] // symbol可选，自动生成默认值
         );
         assetId = result.insertId;
@@ -1502,7 +1781,7 @@ app.post('/api/assets/:type/add', async (req, res) => {
         await db.execute(
           'INSERT INTO bond (asset_id, period, coupon_rate, amount) VALUES (?, ?, ?, ?)',
           [
-            assetId, 
+            assetId,
             parseInt(period), // 转换为整数（匹配表结构）
             parseFloat(couponRate), // 保持小数（匹配DECIMAL类型）
             bondAmount // 债券金额（转换为整数）
@@ -1511,19 +1790,19 @@ app.post('/api/assets/:type/add', async (req, res) => {
       } else {
         // 其他资产类型处理（保持不变）
         const [asset] = await db.execute(
-          'SELECT id, amount FROM current_assets WHERE type = ?', 
+          'SELECT id, amount FROM current_assets WHERE type = ?',
           [type]
         );
         if (asset.length === 0) {
           const [result] = await db.execute(
-            'INSERT INTO current_assets (type, amount) VALUES (?, ?)', 
+            'INSERT INTO current_assets (type, amount) VALUES (?, ?)',
             [type, numericAmount]
           );
           assetId = result.insertId;
         } else {
           const newAmount = Number(asset[0].amount) + numericAmount;
           await db.execute(
-            'UPDATE current_assets SET amount = ? WHERE id = ?', 
+            'UPDATE current_assets SET amount = ? WHERE id = ?',
             [newAmount, asset[0].id]
           );
           assetId = asset[0].id;
@@ -1631,7 +1910,7 @@ app.post('/api/assets/:type/reduce', async (req, res) => {
     if (amount === undefined || amount === null) {
       return res.status(400).json({ error: '缺少减少的资产数量 (amount)' });
     }
-    
+
     // 关键修改：将金额转换为整数（与数据库类型匹配）
     const numericAmount = Math.floor(parseFloat(amount));
     if (isNaN(numericAmount) || numericAmount <= 0) {
@@ -1647,37 +1926,37 @@ app.post('/api/assets/:type/reduce', async (req, res) => {
         if (!symbol) {
           return res.status(400).json({ error: '债券类型需要提供债券代码 (symbol)' });
         }
-        
+
         // 修改查询：同时获取两个表的amount进行验证
         const [bondAsset] = await db.execute(
           'SELECT a.id, a.amount AS current_assets_amount, b.amount AS bond_amount ' +
           'FROM current_assets a ' +
           'JOIN bond b ON a.id = b.asset_id ' +
-          'WHERE a.type = ? AND a.symbol = ?', 
+          'WHERE a.type = ? AND a.symbol = ?',
           [type, symbol]
         );
-        
+
         if (bondAsset.length === 0) {
           return res.status(403).json({ error: `没有 ${symbol} 债券记录，无法减少` });
         }
-        
+
         // 获取两个表的amount并验证一致性
         const currentAssetsAmount = Number(bondAsset[0].current_assets_amount);
         const bondAmount = Number(bondAsset[0].bond_amount);
-        
+
         // 新增：验证两个表的amount是否一致
         if (currentAssetsAmount !== bondAmount) {
           console.error(`数据不一致：current_assets.amount=${currentAssetsAmount}, bond.amount=${bondAmount}`);
           return res.status(500).json({ error: '系统错误：债券数据不一致，请联系管理员' });
         }
-        
+
         // 使用current_assets的amount进行比较（与前端类型一致）
         if (currentAssetsAmount < numericAmount) {
-          return res.status(403).json({ 
-            error: `持有的 ${symbol} 债券数量不足（当前: ${currentAssetsAmount}，请求减少: ${numericAmount}）` 
+          return res.status(403).json({
+            error: `持有的 ${symbol} 债券数量不足（当前: ${currentAssetsAmount}，请求减少: ${numericAmount}）`
           });
         }
-        
+
         const newAmount = currentAssetsAmount - numericAmount;
         assetId = bondAsset[0].id;
 
@@ -1749,6 +2028,32 @@ app.get('/api/health', (req, res) => {
 });
 
 
+
+
+
+
+// Start server
+app.listen(PORT, async () => {
+  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
+
+  try {
+    await initDatabase(); // 确保数据库表建好
+    await preloadRecommendationCache(); // 预加载推荐数据
+    console.log('✅ Recommendation cache preloaded');
+  } catch (err) {
+    console.error('❌ Failed to preload recommendation data:', err.message);
+  }
+});
+
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  if (db) {
+    await db.end();
+    console.log('🔌 MySQL connection closed.');
+  }
+  process.exit(0);
+});
 // 涨幅榜
 app.get('/api/top-gainers', async (req, res) => {
   try {
