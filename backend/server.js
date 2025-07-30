@@ -945,7 +945,8 @@ async function getMarketListWithCache(listType) {
 
   // 2. 否则拉新数据
   const data = await fetchMarketList(listType);
-  const top10 = extractTop10Quotes(data.body || []);
+  const top10 = extractTop10Quotes(data.body || [], listType);
+
 
   // 3. 写入缓存（REPLACE 覆盖旧数据）
   for (const item of top10) {
@@ -986,7 +987,16 @@ async function fetchMarketList(listType) {
   return response.data;
 }
 
-function extractTop10Quotes(quotes) {
+function extractTop10Quotes(quotes, listType) {
+  // 根据 listType 排序
+  if (listType === 'day_gainers') {
+    quotes.sort((a, b) => b.regularMarketChangePercent - a.regularMarketChangePercent);
+  } else if (listType === 'day_losers') {
+    quotes.sort((a, b) => a.regularMarketChangePercent - b.regularMarketChangePercent);
+  } else if (listType === 'most_actives') {
+    quotes.sort((a, b) => b.regularMarketVolume - a.regularMarketVolume);
+  }
+
   return quotes.slice(0, 10).map(item => ({
     symbol: item.symbol,
     name: item.shortName || item.longName,
@@ -998,6 +1008,7 @@ function extractTop10Quotes(quotes) {
     fiftyTwoWeekRange: item.fiftyTwoWeekRange
   }));
 }
+
 // 涨幅榜（day_gainers）-调用接口
 // app.get('/api/market/gainers', async (req, res) => {
 //   try {
@@ -1718,7 +1729,7 @@ app.get('/api/performance/:range', async (req, res) => {
  */
 app.post('/api/assets/:type/add', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol, period, couponRate,description } = req.body;
+  const { amount, symbol, period, couponRate, description } = req.body;
 
   try {
     // 基础参数验证：确保amount有效
@@ -1825,10 +1836,10 @@ app.post('/api/assets/:type/add', async (req, res) => {
 
       // 记录操作历史
       await db.execute(
-          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
-          ['add', amount, description, type]
+        'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+        ['add', amount, description, type]
       );
-      
+
       // 计算并返回总资产
       const totalPortfolio = await calculateCurrentTotalValue();
       res.json({ success: true, totalPortfolio });
@@ -1921,7 +1932,7 @@ app.post('/api/assets/:type/add', async (req, res) => {
  */
 app.post('/api/assets/:type/reduce', async (req, res) => {
   const { type } = req.params;
-  const { amount, symbol,description } = req.body;
+  const { amount, symbol, description } = req.body;
 
   try {
     if (amount === undefined || amount === null) {
@@ -2007,8 +2018,8 @@ app.post('/api/assets/:type/reduce', async (req, res) => {
       await db.commit();
       // 记录操作历史
       await db.execute(
-          'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
-          ['reduce', amount, description, type]
+        'INSERT INTO asset_activity_history (operation_type, amount, description, asset_type) VALUES (?, ?, ?, ?)',
+        ['reduce', amount, description, type]
       );
       const totalPortfolio = await calculateCurrentTotalValue();
       res.json({ success: true, totalPortfolio });
@@ -2224,4 +2235,20 @@ process.on('SIGINT', async () => {
     console.log('🔌 MySQL connection closed.');
   }
   process.exit(0);
+});
+
+// GET /api/asset/history - 获取资产活动历史
+app.get('/api/asset/history', async (req, res) => {
+  try {
+    const [rows] = await db.execute(`
+      SELECT id, operation_date, operation_type, amount, description, asset_type
+      FROM asset_activity_history
+      ORDER BY operation_date DESC
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('Error fetching asset activity history:', error.message);
+    res.status(500).json({ error: 'Failed to fetch asset activity history' });
+  }
 });
