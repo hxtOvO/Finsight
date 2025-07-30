@@ -1,17 +1,11 @@
-// 新建表结构 SQL（可在数据库初始化时执行）
-// CREATE TABLE IF NOT EXISTS stock_prices (
-//   id INT PRIMARY KEY AUTO_INCREMENT,
-//   symbol VARCHAR(16) UNIQUE,
-//   price DECIMAL(12,4),
-//   updated_at DATETIME
-// );
 const express = require('express');
 const mysql = require('mysql2/promise');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path'); // 添加 path 模块
 require('dotenv').config();
-
+const swagger = require('../swagger');
+const router = express.Router(); // 创建Router实例
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,6 +14,8 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static('.')); // Serve static files from current directory
 app.use(express.static(path.join(__dirname, '../frontend')));
+// 注册Swagger UI
+app.use('/api-docs', swagger.serve, swagger.setup);
 
 // Database connection
 const dbConfig = {
@@ -274,8 +270,99 @@ async function seedInitialData() {
   // const [assetRows] = await db.execute('SELECT COUNT(*) as count FROM assets');
 }
 
-// API Routes
-// 删除 featured 栏目股票
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Stock:
+ *       type: object
+ *       properties:
+ *         symbol:
+ *           type: string
+ *         price:
+ *           type: number
+ *           format: float
+ *         change:
+ *           type: number
+ *           format: float
+ *         updated_at:
+ *           type: string
+ *           format: date-time
+ *     Asset:
+ *       type: object
+ *       properties:
+ *         asset_type:
+ *           type: string
+ *           enum: [Cash, Stock, Bond, Other]
+ *         value:
+ *           type: number
+ *           format: float
+ *     Portfolio:
+ *       type: object
+ *       properties:
+ *         total_value:
+ *           type: number
+ *           format: float
+ *         gain_loss:
+ *           type: number
+ *           format: float
+ *         gain_loss_percent:
+ *           type: number
+ *           format: float
+ */
+
+/**
+ * @swagger
+ * /api/featured-stocks/remove:
+ *   post:
+ *     summary: 删除Featured栏目股票
+ *     description: 根据股票代码删除Featured栏目中的股票
+ *     tags: [Featured Stocks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - symbol
+ *             properties:
+ *               symbol:
+ *                 type: string
+ *                 example: "AAPL"
+ *                 description: 股票代码（如AAPL、MSFT）
+ *     responses:
+ *       200:
+ *         description: 删除成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: 缺少股票代码
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "缺少股票代码"
+ *       500:
+ *         description: 服务器错误
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "删除失败"
+ */
 app.post('/api/featured-stocks/remove', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
@@ -286,59 +373,12 @@ app.post('/api/featured-stocks/remove', async (req, res) => {
     res.status(500).json({ error: '删除失败' });
   }
 });
-// 获取 featured 栏目股票列表
-// app.get('/api/featured-stocks', async (req, res) => {
-//   try {
-//     const [rows] = await db.execute('SELECT symbol, price, updated_at FROM featured_stocks ORDER BY updated_at DESC');
-//     // 获取每只股票的涨跌幅（change百分比）
-//     const yahooFinance = require('yahoo-finance2').default;
-//     const result = await Promise.all(rows.map(async row => {
-//       try {
-//         const quote = await yahooFinance.quote(row.symbol);
-//         let change = null;
-//         if (quote && typeof quote.regularMarketChangePercent === 'number') {
-//           change = quote.regularMarketChangePercent;
-//         }
-//         return { ...row, change };
-//       } catch (err) {
-//           console.error(`Error fetching quote for ${row.symbol}:`, err.message);
-//         return { ...row, change: null };
-//       }
-//     }));
-//     res.json(result);
-//   } catch (err) {
-//     console.error('Error fetching featured stocks:', err);
-//     res.status(500).json({ error: '获取栏目股票列表失败' });
-//   }
-// });
 
-// // 添加新 featured 栏目股票(雅虎接口)
-// app.post('/api/featured-stocks/add', async (req, res) => {
-//   const { symbol } = req.body;
-//   if (!symbol) return res.status(400).json({ error: '缺少股票代码' });
-//   try {
-//     const yahooFinance = require('yahoo-finance2').default;
-//     const quote = await yahooFinance.quote(symbol);
-//     const price = quote && quote.regularMarketPrice ? quote.regularMarketPrice : null;
-//     if (price === null) {
-//         return res.status(400).json({ error: '无法获取该股票的实时价格，请检查股票代码是否正确' });
-//     }
-//     const now = new Date();
-//     await db.execute(
-//       'INSERT INTO featured_stocks (symbol, price, updated_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE price = ?, updated_at = ?',
-//       [symbol, price, now, price, now]
-//     );
-//     res.json({ symbol, price, updated_at: now });
-//   } catch (err) {
-//     console.error('Error adding featured stock:', err);
-//     res.status(500).json({ error: '添加或获取股价失败' });
-//   }
-// });
 const axios = require('axios');
 const { Ollama } = require('ollama');
 
 // 配置信息
-const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd';
+// const RAPIDAPI_KEY = '2c6d74fbcfmsh9522f8acde520d3p1293fejsnfb84420a97bd'; // 替换为你的实际API密钥
 const RAPIDAPI_HOST = 'yahoo-finance15.p.rapidapi.com';
 
 // Ollama配置
@@ -522,6 +562,50 @@ async function getFinancialDataForLLM() {
 }
 
 //获取featured栏目股票列表（查）
+/**
+ * @swagger
+ * /api/featured-stocks:
+ *   get:
+ *     summary: 获取Featured栏目股票列表
+ *     description: 返回所有Featured栏目中的股票，包含价格和涨跌幅信息
+ *     tags: [Featured Stocks]
+ *     responses:
+ *       200:
+ *         description: 成功返回股票列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   symbol:
+ *                     type: string
+ *                     example: "AAPL"
+ *                   price:
+ *                     type: number
+ *                     format: float
+ *                     example: 189.56
+ *                   change:
+ *                     type: number
+ *                     format: float
+ *                     example: 1.23
+ *                     description: 涨跌幅（百分比）
+ *                   updated_at:
+ *                     type: string
+ *                     format: date-time
+ *                     example: "2024-07-29T10:30:00.000Z"
+ *       500:
+ *         description: 服务器错误
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "获取栏目股票列表失败"
+ */
 app.get('/api/featured-stocks', async (req, res) => {
   try {
     const [rows] = await db.execute(
@@ -550,6 +634,63 @@ app.get('/api/featured-stocks', async (req, res) => {
 });
 
 //添加新featured栏目股票（增）
+/**
+ * @swagger
+ * /api/featured-stocks/add:
+ *   post:
+ *     summary: 添加股票到Featured栏目
+ *     description: 根据股票代码添加股票到Featured栏目（自动获取实时价格和涨跌幅）
+ *     tags: [Featured Stocks]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - symbol
+ *             properties:
+ *               symbol:
+ *                 type: string
+ *                 example: "NVDA"
+ *                 description: 股票代码（如AAPL、MSFT）
+ *     responses:
+ *       200:
+ *         description: 添加成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 symbol:
+ *                   type: string
+ *                   example: "NVDA"
+ *                 price:
+ *                   type: number
+ *                   format: float
+ *                   example: 420.50
+ *                 change:
+ *                   type: number
+ *                   format: float
+ *                   example: 2.35
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: 参数错误（如缺少股票代码或代码无效）
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "缺少股票代码"
+ *       429:
+ *         description: 请求过于频繁
+ *       500:
+ *         description: 服务器错误
+ */
 app.post('/api/featured-stocks/add', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) {
@@ -660,14 +801,11 @@ app.post('/api/featured-stocks/add', async (req, res) => {
   }
 });
 
-
+//  固定的10个 symbol
 let SYMBOL_LIST = [
   'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA',
   'TSLA', 'META', 'NFLX', 'AMD', 'INTC'
 ];
-//  固定的10个 symbol
-
-// ✅ 服务函数
 async function fetchRecommendationTrend(symbol) {
   try {
     const res = await axios.get('https://yahoo-finance15.p.rapidapi.com/api/v1/markets/stock/modules', {
@@ -761,7 +899,7 @@ function processRecommendationData(rawData) {
     }
 
     const weighted = calculateWeightedRecommendation(item.recommendation);
-    
+
     return {
       symbol: item.symbol,
       action: weighted.action,
@@ -774,17 +912,162 @@ function processRecommendationData(rawData) {
   });
 }
 
-// GET 接口：返回所有 symbol 的推荐趋势（使用加权算法）
+const market_API = 'https://yahoo-finance15.p.rapidapi.com/api/v1/markets/screener';
+
+
+async function fetchMarketList(listType) {
+  const url = `${market_API}?list=${listType}`;
+  const response = await axios.get(url, {
+    headers: {
+      'x-rapidapi-key': RAPIDAPI_KEY,
+      'x-rapidapi-host': RAPIDAPI_HOST
+    }
+  });
+  return response.data;
+}
+
+function extractTop10Quotes(quotes) {
+  return quotes.slice(0, 10).map(item => ({
+    symbol: item.symbol,
+    name: item.shortName || item.longName,
+    price: item.regularMarketPrice,
+    change: item.regularMarketChange,
+    changePercent: item.regularMarketChangePercent,
+    volume: item.regularMarketVolume,
+    marketCap: item.marketCap,
+    fiftyTwoWeekRange: item.fiftyTwoWeekRange
+  }));
+}
+// ✅ 涨幅榜（day_gainers）
+app.get('/api/market/gainers', async (req, res) => {
+  try {
+    const data = await fetchMarketList('day_gainers');
+    const top10 = extractTop10Quotes(data.body || []);
+    res.json(top10);
+  } catch (error) {
+    console.error('Error fetching gainers:', error.message);
+    res.status(500).json({ error: 'Failed to fetch gainers' });
+  }
+});
+
+
+
+// ✅ 跌幅榜（day_losers）
+app.get('/api/market/losers', async (req, res) => {
+  try {
+    const data = await fetchMarketList('day_losers');
+    const top10 = extractTop10Quotes(data.body || []);
+    res.json(top10);
+  } catch (error) {
+    console.error('Error fetching losers:', error.message);
+    res.status(500).json({ error: 'Failed to fetch losers' });
+  }
+});
+
+// ✅ 最活跃榜（most_actives）
+app.get('/api/market/most-active', async (req, res) => {
+  try {
+    const data = await fetchMarketList('most_actives');
+    const top10 = extractTop10Quotes(data.body || []);
+    res.json(top10);
+  } catch (error) {
+    console.error('Error fetching most actives:', error.message);
+    res.status(500).json({ error: 'Failed to fetch most actives' });
+  }
+});
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// Get接口：返回所有 symbol 的推荐趋势（使用加权算法）
+/**
+ * @swagger
+ * /api/recommendation-trend:
+ *   get:
+ *     summary: 获取股票推荐趋势列表
+ *     description: 返回预设股票列表的推荐趋势数据
+ *     tags: [Recommendation Trends]
+ *     responses:
+ *       200:
+ *         description: 成功返回趋势列表
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   symbol:
+ *                     type: string
+ *                     example: "AAPL"
+ *                   recommendation:
+ *                     type: object
+ *                     description: 推荐趋势数据（如买入/卖出评级）
+ *                   error:
+ *                     type: string
+ *                     nullable: true
+ *                     example: null
+ */
 app.get('/api/recommendation-trend', async (req, res) => {
   const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
   const results = await Promise.all(promises);
-  
+
   // 使用加权算法处理数据
   const processedResults = processRecommendationData(results);
-  
+
   res.json(processedResults);
 });
 //Post接口
+/**
+ * @swagger
+ * /api/recommendation-trend/add:
+ *   post:
+ *     summary: 添加股票到推荐趋势列表
+ *     description: 将新股票添加到推荐趋势监控列表并返回其趋势数据
+ *     tags: [Recommendation Trends]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - symbol
+ *             properties:
+ *               symbol:
+ *                 type: string
+ *                 example: "TSLA"
+ *     responses:
+ *       200:
+ *         description: 添加成功并返回趋势数据
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 symbol:
+ *                   type: string
+ *                   example: "TSLA"
+ *                 recommendation:
+ *                   type: object
+ *       400:
+ *         description: 缺少股票代码
+ */
 app.post('/api/recommendation-trend/add', async (req, res) => {
   const { symbol } = req.body;
   if (!symbol) return res.status(400).json({ error: 'Missing symbol in body' });
@@ -797,13 +1080,43 @@ app.post('/api/recommendation-trend/add', async (req, res) => {
 
   const result = await fetchRecommendationTrend(cleanSymbol);
   const processedResult = processRecommendationData([result])[0];
-  
+
   res.json(processedResult);
 });
 
 
 
 // Get portfolio summary - 实时计算总价值
+/**
+ * @swagger
+ * /api/portfolio:
+ *   get:
+ *     summary: 获取投资组合摘要
+ *     description: 实时计算并返回投资组合总价值、盈亏及盈亏百分比
+ *     tags: [Portfolio]
+ *     responses:
+ *       200:
+ *         description: 成功返回投资组合数据
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 total_value:
+ *                   type: number
+ *                   format: float
+ *                   example: 56890.25
+ *                 gain_loss:
+ *                   type: number
+ *                   format: float
+ *                   example: 3450.75
+ *                 gain_loss_percent:
+ *                   type: number
+ *                   format: float
+ *                   example: 6.45
+ *       500:
+ *         description: 服务器错误
+ */
 app.get('/api/portfolio', async (req, res) => {
   try {
     const calculatedTotal = await calculateCurrentTotalValue(); // 实时计算总价值
@@ -852,6 +1165,33 @@ app.get('/api/portfolio', async (req, res) => {
 });
 
 // Get asset allocation - 已经从 current_assets 获取，保持不变
+/**
+ * @swagger
+ * /api/assets:
+ *   get:
+ *     summary: 获取资产分配情况
+ *     description: 返回现金、股票、债券、其他资产的分配比例及价值
+ *     tags: [Assets]
+ *     responses:
+ *       200:
+ *         description: 成功返回资产分配数据
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   asset_type:
+ *                     type: string
+ *                     enum: [Cash, Stock, Bond, Other]
+ *                   value:
+ *                     type: number
+ *                     format: float
+ *                     example: 25000.00
+ *       500:
+ *         description: 服务器错误
+ */
 app.get('/api/assets', async (req, res) => {
   try {
     // 查询 current_assets 表
@@ -897,6 +1237,57 @@ app.get('/api/assets', async (req, res) => {
 });
 
 // Update asset value - 修改为更新 current_assets 表
+/**
+ * @swagger
+ * /api/assets/{type}:
+ *   put:
+ *     summary: 更新资产价值
+ *     description: 调整指定类型资产的价值（支持现金、股票、债券、其他资产）
+ *     tags: [Assets]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cash, stock, bond, other]
+ *         description: 资产类型
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - change
+ *             properties:
+ *               change:
+ *                 type: number
+ *                 format: float
+ *                 example: 1000.50
+ *                 description: 价值变化量（正数增加，负数减少）
+ *               symbol:
+ *                 type: string
+ *                 example: "AAPL"
+ *                 description: 股票代码（仅type=stock时需要）
+ *     responses:
+ *       200:
+ *         description: 更新成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 totalPortfolio:
+ *                   type: number
+ *                   format: float
+ *       400:
+ *         description: 参数错误（如价值为负或缺少股票代码）
+ *       500:
+ *         description: 服务器错误
+ */
 app.put('/api/assets/:type', async (req, res) => {
   const { type } = req.params; // 例如 'cash', 'stock'
   const { change, symbol } = req.body; // change 是金额变化，symbol 用于股票数量变化
@@ -1034,6 +1425,44 @@ app.post('/api/chat', async (req, res) => {
 });
 
 // Get performance history (updated to use asset_history)
+/**
+ * @swagger
+ * /api/performance/{range}:
+ *   get:
+ *     summary: 获取绩效历史数据
+ *     description: 返回指定时间范围内的资产总价值历史趋势
+ *     tags: [Performance]
+ *     parameters:
+ *       - in: path
+ *         name: range
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [7d, 1m, 6m]
+ *         description: 时间范围（7d=7天，1m=1个月，6m=6个月）
+ *     responses:
+ *       200:
+ *         description: 成功返回绩效数据
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                     example: "2024-07-01"
+ *                   value:
+ *                     type: number
+ *                     format: float
+ *                     example: 52000.00
+ *       400:
+ *         description: 无效的时间范围
+ *       500:
+ *         description: 服务器错误
+ */
 app.get('/api/performance/:range', async (req, res) => {
   const { range } = req.params;
 
@@ -1079,30 +1508,318 @@ app.get('/api/performance/:range', async (req, res) => {
   }
 });
 
+// 增加资产接口
+/**
+ * @swagger
+ * /api/assets/{type}/add:
+ *   post:
+ *     summary: 增加指定类型资产
+ *     description: 增加现金、债券、股票、其他资产的数量
+ *     tags: [Assets]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cash, stock, bond, other]
+ *         description: 资产类型
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 example: 1000.50
+ *                 description: 增加的资产数量
+ *               symbol:
+ *                 type: string
+ *                 example: "AAPL"
+ *                 description: 股票代码（仅type=stock时需要）
+ *     responses:
+ *       200:
+ *         description: 增加成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 totalPortfolio:
+ *                   type: number
+ *                   format: float
+ *       400:
+ *         description: 参数错误（如缺少数量或股票代码）
+ *       500:
+ *         description: 服务器错误
+ */
+app.post('/api/assets/:type/add', async (req, res) => {
+  const { type } = req.params;
+  const { amount, symbol } = req.body;
+
+  try {
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ error: '缺少增加的资产数量 (amount)' });
+    }
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ error: '增加的资产数量 (amount) 必须是正数' });
+    }
+
+    if (type === 'stock') {
+      if (!symbol) {
+        return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
+      }
+      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', [type, symbol]);
+      if (stockAsset.length === 0) {
+        // 如果没有该股票记录，则插入新记录
+        await db.execute('INSERT INTO current_assets (type, symbol, amount) VALUES (?, ?, ?)', [type, symbol, numericAmount]);
+      } else {
+        // 更新现有记录
+        const newAmount = Number(stockAsset[0].amount) + numericAmount;
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, stockAsset[0].id]);
+      }
+    } else {
+      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
+      if (asset.length === 0) {
+        // 如果没有该类型资产记录，则插入新记录
+        await db.execute('INSERT INTO current_assets (type, amount) VALUES (?, ?)', [type, numericAmount]);
+      } else {
+        // 更新现有记录
+        const newAmount = Number(asset[0].amount) + numericAmount;
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
+      }
+    }
+
+    const totalPortfolio = await calculateCurrentTotalValue();
+    res.json({ success: true, totalPortfolio });
+  } catch (error) {
+    console.error('Error in /api/assets/:type/add:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 减少资产接口
+/**
+ * @swagger
+ * /api/assets/{type}/reduce:
+ *   post:
+ *     summary: 减少指定类型资产
+ *     description: 减少现金、债券、股票、其他资产的数量
+ *     tags: [Assets]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cash, stock, bond, other]
+ *         description: 资产类型
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - amount
+ *             properties:
+ *               amount:
+ *                 type: number
+ *                 format: float
+ *                 example: 1000.50
+ *                 description: 减少的资产数量
+ *               symbol:
+ *                 type: string
+ *                 example: "AAPL"
+ *                 description: 股票代码（仅type=stock时需要）
+ *     responses:
+ *       200:
+ *         description: 减少成功
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 totalPortfolio:
+ *                   type: number
+ *                   format: float
+ *       400:
+ *         description: 参数错误（如缺少数量或股票代码）
+ *       403:
+ *         description: 资产数量不足
+ *       500:
+ *         description: 服务器错误
+ */
+app.post('/api/assets/:type/reduce', async (req, res) => {
+  const { type } = req.params;
+  const { amount, symbol } = req.body;
+
+  try {
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ error: '缺少减少的资产数量 (amount)' });
+    }
+    const numericAmount = parseFloat(amount);
+    if (isNaN(numericAmount) || numericAmount <= 0) {
+      return res.status(400).json({ error: '减少的资产数量 (amount) 必须是正数' });
+    }
+
+    if (type === 'stock') {
+      if (!symbol) {
+        return res.status(400).json({ error: '股票类型需要提供股票代码 (symbol)' });
+      }
+      const [stockAsset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ? AND symbol = ?', [type, symbol]);
+      if (stockAsset.length === 0) {
+        return res.status(403).json({ error: `没有 ${symbol} 股票记录，无法减少` });
+      }
+      const currentAmount = Number(stockAsset[0].amount);
+      if (currentAmount < numericAmount) {
+        return res.status(403).json({ error: `持有的 ${symbol} 股票数量不足，无法减少` });
+      }
+      const newAmount = currentAmount - numericAmount;
+      if (newAmount === 0) {
+        await db.execute('DELETE FROM current_assets WHERE id = ?', [stockAsset[0].id]);
+      } else {
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, stockAsset[0].id]);
+      }
+    } else {
+      const [asset] = await db.execute('SELECT id, amount FROM current_assets WHERE type = ?', [type]);
+      if (asset.length === 0) {
+        return res.status(403).json({ error: `没有 ${type} 资产记录，无法减少` });
+      }
+      const currentAmount = Number(asset[0].amount);
+      if (currentAmount < numericAmount) {
+        return res.status(403).json({ error: `${type} 资产数量不足，无法减少` });
+      }
+      const newAmount = currentAmount - numericAmount;
+      if (newAmount === 0) {
+        await db.execute('DELETE FROM current_assets WHERE id = ?', [asset[0].id]);
+      } else {
+        await db.execute('UPDATE current_assets SET amount = ? WHERE id = ?', [newAmount, asset[0].id]);
+      }
+    }
+
+    const totalPortfolio = await calculateCurrentTotalValue();
+    res.json({ success: true, totalPortfolio });
+  } catch (error) {
+    console.error('Error in /api/assets/:type/reduce:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // Health check
+/**
+ * @swagger
+ * /api/health:
+ *   get:
+ *     summary: 服务健康检查
+ *     description: 验证后端服务是否正常运行
+ *     tags: [System]
+ *     responses:
+ *       200:
+ *         description: 服务正常运行
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "OK"
+ *                 message:
+ *                   type: string
+ *                   example: "FinSight Backend is running (MySQL)"
+ */
 app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'FinSight Backend is running (MySQL)' });
 });
 
 
-
-
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
-  await initDatabase();
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  if (db) {
-    await db.end();
-    console.log('🔌 MySQL connection closed.');
+// 涨幅榜
+app.get('/api/top-gainers', async (req, res) => {
+  try {
+    const result = await getSortedQuotes('gain');
+    res.json(result);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch top gainers.' });
   }
-  process.exit(0);
 });
 
+// 跌幅榜
+app.get('/api/top-losers', async (req, res) => {
+  try {
+    const result = await getSortedQuotes('loss');
+    res.json(result);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch top losers.' });
+  }
+});
+
+// 最活跃
+app.get('/api/most-active', async (req, res) => {
+  try {
+    const result = await getSortedQuotes('volume');
+    res.json(result);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).json({ error: 'Failed to fetch most active stocks.' });
+  }
+});
+
+/**
+ * @swagger
+ * /api/assets/{assetType}/performance/{range}:
+ *   get:
+ *     summary: 获取特定资产类型的绩效历史
+ *     description: 返回指定资产类型在指定时间范围内的价值趋势
+ *     tags: [Performance]
+ *     parameters:
+ *       - in: path
+ *         name: assetType
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [cash, stock, bond, other]
+ *         description: 资产类型
+ *       - in: path
+ *         name: range
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [7d, 1m, 6m]
+ *         description: 时间范围
+ *     responses:
+ *       200:
+ *         description: 成功返回绩效数据
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   date:
+ *                     type: string
+ *                     format: date
+ *                   value:
+ *                     type: number
+ *                     format: float
+ *       400:
+ *         description: 无效的资产类型或时间范围
+ *       500:
+ *         description: 服务器错误
+ */
 app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
   const { assetType, range } = req.params;
   let query = '';
@@ -1164,4 +1881,19 @@ app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
     console.error('Error fetching asset performance data:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// Start server
+app.listen(PORT, async () => {
+  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
+  await initDatabase();
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  if (db) {
+    await db.end();
+    console.log('🔌 MySQL connection closed.');
+  }
+  process.exit(0);
 });

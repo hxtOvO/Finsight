@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>📈 Portfolio Manager</title>
   <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"> 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* Featured Stocks 栏目样式 */
@@ -27,7 +29,7 @@
       margin-bottom: 12px;
     }
     .featured-list {
-      max-height: 250px;
+      /* max-height: 250px; */
       overflow-y: auto;
       margin-bottom: 12px;
       border: 1px solid #eee;
@@ -396,7 +398,7 @@
               const transactionDescription = document.getElementById('transactionDescription');
               
               if (cashConfirmBtn) {
-                cashConfirmBtn.addEventListener('click', () => {
+                cashConfirmBtn.addEventListener('click', async () => {
                   const amount = cashAmountInput.value;
                   const operation = selectedCashOperation;
                   const description = transactionDescription.value;
@@ -406,14 +408,32 @@
                     return;
                   }
                   
-                  // 这里可以添加提交到后端的逻辑
-                  console.log('Cash transaction:', {
-                    operation: operation,
-                    amount: parseFloat(amount),
-                    description: description || 'No description'
-                  });
+                  // 调用后端接口
+                  try {
+                    const response = await fetch('http://localhost:3000/api/assets/cash/add', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            amount: parseFloat(amount)
+                        })
+                    });
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(errorData.error);
+                    }
+
+                    const data = await response.json();
+                    console.log('API response:', data);
+                    alert(`Cash ${operation} of $${amount} confirmed!`);
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert(`An error occurred: ${error.message}`);
+                }
                   
-                  alert(`Cash ${operation} of $${amount} confirmed!`);
+                  // alert(`Cash ${operation} of $${amount} confirmed!`);
                 });
               }
               
@@ -1200,7 +1220,7 @@
             <button class="toggle-btn" data-range="6m" data-chart="selectedAsset">6 Months</button>
           </div> -->
           <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <div class="dashboard-content" style="width:100%;">
+            <div class="dashboard-content",id="", style="width:100%;">
               <canvas id="selectedAssetChart"></canvas>
             </div>
           </div>

@@ -117,8 +117,8 @@ function updateChart(labels, data) {
       options: {
         responsive: true,
         animation: {
-          duration: 900,
-          easing: 'easeOutQuart'
+          // duration: 1500,
+          // easing: 'easeOutQuart'
         },
         plugins: {
           legend: { display: false },
@@ -139,7 +139,10 @@ function updateChart(labels, data) {
   } else {
     chart.data.labels = labels;
     chart.data.datasets[0].data = data;
-    chart.update();
+    chart.update({
+      // duration: 900, /* 增加更新动画持续时间 */
+      // easing: 'easeOutQuart'
+    });
   }
 }
 
