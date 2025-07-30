@@ -6,7 +6,7 @@
   <title>📈 Portfolio Manager</title>
   <link rel="stylesheet" href="style.css">
   <link rel="stylesheet" href="style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"> 
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     /* Featured Stocks 栏目样式 */
@@ -244,7 +244,7 @@
         </div>
         <button id="closeChatModal" onclick="document.getElementById('qwenChatModal').style.display='none'" style="background: none; border: none; color: #fff; font-size: 42px; cursor: pointer; padding: 5px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='none'">×</button>
       </div>
-      
+
       <!-- 聊天消息区域（复制Financial Assistant的样式） -->
       <div id="chatMessages" style="flex:1; overflow-y:auto; border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f8fafc; margin:16px; margin-bottom:0; font-size:21px; line-height:1.5;">
         <div style="text-align:center; padding:20px; color:#9ca3af;">
@@ -252,16 +252,16 @@
           <div style="font-size:24px;">Ask me anything about your portfolio or market trends!</div>
         </div>
       </div>
-      
+
       <!-- 输入区域（复制Financial Assistant的样式） -->
       <div style="padding: 16px; background: #fff; border-top: 1px solid #e5e7eb;">
         <div style="display:flex; gap:12px; align-items:flex-end;">
-          <textarea id="chatInput" placeholder="Ask about your portfolio, market trends, or get investment advice..." 
+          <textarea id="chatInput" placeholder="Ask about your portfolio, market trends, or get investment advice..."
             style="flex:1; padding:12px 16px; border:2px solid #e5e7eb; border-radius:12px; resize:none; font-size:21px; font-family:inherit; line-height:1.4; min-height:66px; max-height:120px; transition:border-color 0.2s; outline:none;"
             onkeydown="handleChatKeydown(event)"
             onfocus="this.style.borderColor='#3b82f6'"
             onblur="this.style.borderColor='#e5e7eb'"></textarea>
-          <button id="sendChatBtn" onclick="sendChatMessage()" 
+          <button id="sendChatBtn" onclick="sendChatMessage()"
             style="padding:12px 20px; background:#3b82f6; color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer; transition:background 0.2s; white-space:nowrap; height:44px;"
             onmouseover="this.style.background='#2563eb'"
             onmouseout="this.style.background='#3b82f6'">
@@ -377,18 +377,18 @@
           setTimeout(() => {
             const cashInBtn = document.getElementById('cashInBtn');
             const cashOutBtn = document.getElementById('cashOutBtn');
-            
+
             if (cashInBtn && cashOutBtn) {
               // 设置默认选中Cash In
               let selectedCashOperation = 'in';
-              
+
               function updateCashButtonStyles() {
                 if (selectedCashOperation === 'in') {
                   cashInBtn.style.background = '#db0011';
                   cashInBtn.style.color = '#fff';
                   cashInBtn.style.border = 'none';
                   cashInBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   cashOutBtn.style.background = '#fff';
                   cashOutBtn.style.color = '#222';
                   cashOutBtn.style.border = '1px solid #ddd';
@@ -398,30 +398,30 @@
                   cashOutBtn.style.color = '#fff';
                   cashOutBtn.style.border = 'none';
                   cashOutBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   cashInBtn.style.background = '#fff';
                   cashInBtn.style.color = '#222';
                   cashInBtn.style.border = '1px solid #ddd';
                   cashInBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                 }
               }
-              
+
               cashInBtn.addEventListener('click', () => {
                 selectedCashOperation = 'in';
                 updateCashButtonStyles();
               });
-              
+
               cashOutBtn.addEventListener('click', () => {
                 selectedCashOperation = 'out';
                 updateCashButtonStyles();
               });
-              
+
               // 添加Confirm和Clear按钮功能
               const cashConfirmBtn = document.getElementById('cashConfirmBtn');
               const cashClearBtn = document.getElementById('cashClearBtn');
               const cashAmountInput = document.getElementById('cashAmountInput');
               const transactionDescription = document.getElementById('transactionDescription');
-              
+
               if (cashConfirmBtn) {
                 cashConfirmBtn.addEventListener('click', async () => {
                     const amount = cashAmountInput.value;
@@ -437,7 +437,7 @@
                         // 根据操作类型选择正确的接口
                         const assetType = 'cash';
                         const endpoint = operation === 'in' ? 'add' : 'reduce'; // 关键修改点
-                        
+
                         const response = await fetch(`http://localhost:3000/api/assets/${assetType}/${endpoint}`, {
                             method: 'POST',
                             headers: {
@@ -463,7 +463,7 @@
                     }
                 });
             }
-              
+
               if (cashClearBtn) {
                 cashClearBtn.addEventListener('click', () => {
                   cashAmountInput.value = '';
@@ -479,17 +479,17 @@
           setTimeout(() => {
             const stockBuyBtn = document.getElementById('stockBuyBtn');
             const stockSellBtn = document.getElementById('stockSellBtn');
-            
+
             if (stockBuyBtn && stockSellBtn) {
               let selectedStockOperation = 'buy';
-              
+
               function updateStockButtonStyles() {
                 if (selectedStockOperation === 'buy') {
                   stockBuyBtn.style.background = '#db0011';
                   stockBuyBtn.style.color = '#fff';
                   stockBuyBtn.style.border = 'none';
                   stockBuyBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   stockSellBtn.style.background = '#fff';
                   stockSellBtn.style.color = '#222';
                   stockSellBtn.style.border = '1px solid #ddd';
@@ -499,38 +499,38 @@
                   stockSellBtn.style.color = '#fff';
                   stockSellBtn.style.border = 'none';
                   stockSellBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   stockBuyBtn.style.background = '#fff';
                   stockBuyBtn.style.color = '#222';
                   stockBuyBtn.style.border = '1px solid #ddd';
                   stockBuyBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                 }
               }
-              
+
               stockBuyBtn.addEventListener('click', () => {
                 selectedStockOperation = 'buy';
                 updateStockButtonStyles();
               });
-              
+
               stockSellBtn.addEventListener('click', () => {
                 selectedStockOperation = 'sell';
                 updateStockButtonStyles();
               });
-              
+
               // 添加Stock Confirm和Clear按钮功能
               const stockConfirmBtn = document.getElementById('stockConfirmBtn');
               const stockClearBtn = document.getElementById('stockClearBtn');
               const stockSymbolInput = document.getElementById('stockSymbolInput');
               const stockQuantityInput = document.getElementById('stockQuantityInput');
               const stockTransactionDescription = document.getElementById('stockTransactionDescription');
-              
+
               if (stockConfirmBtn) {
                 stockConfirmBtn.addEventListener('click', async () => {
                     const symbol = stockSymbolInput.value.trim().toUpperCase();
                     const quantity = stockQuantityInput.value;
                     const operation = selectedStockOperation;
                     const description = stockTransactionDescription.value;
-                    
+
                     if (!symbol) {
                         alert('Please enter a stock symbol');
                         return;
@@ -539,12 +539,12 @@
                         alert('Please enter a valid quantity');
                         return;
                     }
-                    
+
                     try {
                         // 根据操作类型选择正确的接口
                         const assetType = 'stock';
                         const endpoint = operation === 'buy' ? 'add' : 'reduce';
-                        
+
                         const response = await fetch(`http://localhost:3000/api/assets/${assetType}/${endpoint}`, {
                             method: 'POST',
                             headers: {
@@ -571,7 +571,7 @@
                     }
                 });
             }
-              
+
               if (stockClearBtn) {
                 stockClearBtn.addEventListener('click', () => {
                   stockSymbolInput.value = '';
@@ -588,10 +588,10 @@
           setTimeout(() => {
             const bondBuyBtn = document.getElementById('bondBuyBtn');
             const bondSellBtn = document.getElementById('bondSellBtn');
-            
+
             if (bondBuyBtn && bondSellBtn) {
               let selectedBondOperation = 'buy';
-              
+
               // 更新按钮样式函数（保持不变）
               function updateBondButtonStyles() {
                 if (selectedBondOperation === 'buy') {
@@ -599,7 +599,7 @@
                   bondBuyBtn.style.color = '#fff';
                   bondBuyBtn.style.border = 'none';
                   bondBuyBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   bondSellBtn.style.background = '#fff';
                   bondSellBtn.style.color = '#222';
                   bondSellBtn.style.border = '1px solid #ddd';
@@ -609,25 +609,25 @@
                   bondSellBtn.style.color = '#fff';
                   bondSellBtn.style.border = 'none';
                   bondSellBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   bondBuyBtn.style.background = '#fff';
                   bondBuyBtn.style.color = '#222';
                   bondBuyBtn.style.border = '1px solid #ddd';
                   bondBuyBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                 }
               }
-              
+
               // 绑定按钮切换事件（保持不变）
               bondBuyBtn.addEventListener('click', () => {
                 selectedBondOperation = 'buy';
                 updateBondButtonStyles();
               });
-              
+
               bondSellBtn.addEventListener('click', () => {
                 selectedBondOperation = 'sell';
                 updateBondButtonStyles();
               });
-              
+
               // 获取DOM元素（使用HTML中实际的ID）
               const bondConfirmBtn = document.getElementById('bondConfirmBtn');
               const bondClearBtn = document.getElementById('bondClearBtn');
@@ -636,19 +636,19 @@
               const bondMaturityInput = document.getElementById('bondMaturityInput'); // 期限（下拉框，HTML中实际ID）
               const bondInterestRateInput = document.getElementById('bondInterestRateInput'); // 利率（HTML中实际ID）
               const bondTransactionDescription = document.getElementById('bondTransactionDescription'); // 描述
-              
+
               // 确认按钮点击事件（核心修改）
               if (bondConfirmBtn) {
                 bondConfirmBtn.addEventListener('click', async () => {
                   console.log('Confirm button clicked');
-                  
+
                   const bondCode = bondCodeInput.value.trim();
                   const amount = bondAmountInput.value;
                   const period = bondMaturityInput.value;
                   const couponRate = bondInterestRateInput.value;
                   const description = bondTransactionDescription.value;
                   const operation = selectedBondOperation; // 'buy' 或 'sell'
-                  
+
                   // 基础验证（所有操作都需要）
                   if (!bondCode) {
                     alert('Please enter bond details (ISIN or name)');
@@ -659,7 +659,7 @@
                     alert('Please enter a valid face value amount (minimum $100)');
                     return;
                   }
-                  
+
                   // 购买操作需要额外验证期限和利率
                   if (operation === 'buy') {
                     if (!period) {
@@ -672,7 +672,7 @@
                       return;
                     }
                   }
-                  
+
                   try {
                     // 构建请求参数（根据操作类型动态调整）
                     const requestData = {
@@ -680,18 +680,18 @@
                       amount: amountNum,
                       description: description || 'No description'
                     };
-                    
+
                     // 仅购买时添加期限和利率
                     if (operation === 'buy') {
                       requestData.period = parseInt(period);
                       requestData.couponRate = parseFloat(couponRate);
                     }
-                    
+
                     const endpoint = operation === 'buy' ? 'add' : 'reduce';
                     const url = `http://localhost:3000/api/assets/bond/${endpoint}`;
-                    
+
                     console.log('Sending request to:', url, 'Data:', requestData);
-                    
+
                     const response = await fetch(url, {
                       method: 'POST',
                       headers: {
@@ -699,15 +699,15 @@
                       },
                       body: JSON.stringify(requestData)
                     });
-                    
+
                     if (!response.ok) {
                       const errorData = await response.json();
                       throw new Error(errorData.error || 'Operation failed');
                     }
-                    
+
                     const result = await response.json();
                     alert(`Bond ${operation === 'buy' ? 'purchased' : 'sold'} successfully! Total portfolio: $${result.totalPortfolio.toFixed(2)}`);
-                    
+
                     // 重置表单
                     bondCodeInput.value = '';
                     bondAmountInput.value = '';
@@ -716,7 +716,7 @@
                     bondTransactionDescription.value = '';
                     selectedBondOperation = 'buy';
                     updateBondButtonStyles();
-                    
+
                   } catch (error) {
                     console.error('Request failed:', error);
                     alert(`Error: ${error.message}`);
@@ -742,17 +742,17 @@
           setTimeout(() => {
             const otherAddBtn = document.getElementById('otherAddBtn');
             const otherRemoveBtn = document.getElementById('otherRemoveBtn');
-            
+
             if (otherAddBtn && otherRemoveBtn) {
               let selectedOtherOperation = 'add';
-              
+
               function updateOtherButtonStyles() {
                 if (selectedOtherOperation === 'add') {
                   otherAddBtn.style.background = '#db0011';
                   otherAddBtn.style.color = '#fff';
                   otherAddBtn.style.border = 'none';
                   otherAddBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   otherRemoveBtn.style.background = '#fff';
                   otherRemoveBtn.style.color = '#222';
                   otherRemoveBtn.style.border = '1px solid #ddd';
@@ -762,47 +762,47 @@
                   otherRemoveBtn.style.color = '#fff';
                   otherRemoveBtn.style.border = 'none';
                   otherRemoveBtn.style.boxShadow = '0 2px 8px rgba(219,0,17,0.2)';
-                  
+
                   otherAddBtn.style.background = '#fff';
                   otherAddBtn.style.color = '#222';
                   otherAddBtn.style.border = '1px solid #ddd';
                   otherAddBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
                 }
               }
-              
+
               otherAddBtn.addEventListener('click', () => {
                 selectedOtherOperation = 'add';
                 updateOtherButtonStyles();
               });
-              
+
               otherRemoveBtn.addEventListener('click', () => {
                 selectedOtherOperation = 'remove';
                 updateOtherButtonStyles();
               });
-              
+
               // 添加Other Confirm和Clear按钮功能
               const otherConfirmBtn = document.getElementById('otherConfirmBtn');
               const otherClearBtn = document.getElementById('otherClearBtn');
               const otherAmountInput = document.getElementById('otherAmountInput');
               const otherDescriptionInput = document.getElementById('otherDescriptionInput');
               const otherTransactionDescription = document.getElementById('otherTransactionDescription');
-              
+
               if (otherConfirmBtn) {
                 otherConfirmBtn.addEventListener('click', async () => {
                     const amount = otherAmountInput.value;
                     const assetDescription = otherDescriptionInput.value.trim();
                     const operation = selectedOtherOperation;
                     const transactionDescription = otherTransactionDescription.value;
-                    
+
                     if (!amount || parseFloat(amount) <= 0) {
                         alert('Please enter a valid amount');
                         return;
                     }
-                    
+
                     try {
                         // 确定操作类型对应的 API 端点
                         const endpoint = operation === 'add' ? 'add' : 'reduce';
-                        
+
                         // 调用后端 API
                         const response = await fetch(`http://localhost:3000/api/assets/other/${endpoint}`, {
                             method: 'POST',
@@ -815,29 +815,29 @@
                                 // 可以根据需要添加更多参数
                             })
                         });
-                        
+
                         if (!response.ok) {
                             const errorData = await response.json();
                             throw new Error(errorData.error || 'Failed to process transaction');
                         }
-                        
+
                         const data = await response.json();
                         console.log('API response:', data);
-                        
+
                         // 显示成功消息
                         const assetType = assetDescription ? ` (${assetDescription})` : '';
                         alert(`Other asset ${operation} of $${amount}${assetType} confirmed!`);
-                        
+
                         // 更新资产列表或执行其他操作
                         updateAssetList();
-                        
+
                     } catch (error) {
                         console.error('Transaction error:', error);
                         alert(`Error: ${error.message}`);
                     }
                 });
             }
-              
+
               if (otherClearBtn) {
                 otherClearBtn.addEventListener('click', () => {
                   otherAmountInput.value = '';
@@ -1135,7 +1135,7 @@
             performanceWrapper.style.padding = '0';
             performanceWrapper.style.boxSizing = 'border-box';
             performanceWrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
-            
+
             performanceWrapper.innerHTML = `
               <!-- Performance主内容区域 -->
               <div style="width: 100%; height: 100vh; display: flex; flex-direction: column; padding-top: 80px;">
@@ -1170,7 +1170,7 @@
                         </div>
                       </div>
                     </div>
-                    
+
                     <!-- 右上: Allocation Pie Chart -->
                     <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; flex-direction:column; width:100%; margin-left:-15%; padding:20px;">
                       <!-- 标题 -->
@@ -1187,18 +1187,20 @@
                         </div>
                       </div>
                     </div>
-                    
+
                     <!-- 左下: Selected Asset Chart -->
                     <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; display:flex; flex-direction:column; width:76%; height:100%; overflow:hidden;">
-                      <!-- 动态标题 -->
-                      <div style="margin-bottom:16px;">
-                        <h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Performance</h3>
-                      </div>
-                      <div style="width:100%; flex:1; position:relative;">
-                        <canvas id="selectedAssetChart" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
-                      </div>
-                    </div>
-                    
+  <!-- 动态标题 -->
+  <div style="margin-bottom:16px;">
+    <!-- 原始标题：<h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Performance</h3> -->
+    <!-- 修改后的标题，初始显示为 "Cash Value (1m)"，字体大小与 Portfolio Performance 保持一致 -->
+    <h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Value (1m)</h3>
+  </div>
+  <div style="width:100%; flex:1; position:relative;">
+    <canvas id="selectedAssetChart" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+  </div>
+</div>
+
                     <!-- 右下: Featured Stocks -->
                     <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; overflow:hidden; margin-left:-15%;">
                       <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
@@ -1215,9 +1217,9 @@
                 </main>
               </div>
             `;
-            
+
             document.querySelector('.dashboard-container').appendChild(performanceWrapper);
-            
+
             // 为Performance页面的toggle按钮添加事件监听器
             setTimeout(() => {
               const performanceToggleBtns = performanceWrapper.querySelectorAll('.toggle-btn');
@@ -1239,7 +1241,7 @@
           }
           return performanceWrapper;
         }
-        
+
         // 创建Market页面
         function createMarketPage() {
           let marketWrapper = document.getElementById('marketWrapper');
@@ -1252,7 +1254,7 @@
             marketWrapper.style.padding = '24px';
             marketWrapper.style.boxSizing = 'border-box';
             marketWrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
-            
+
             marketWrapper.innerHTML = `
               <div style="display:flex; width:100%; height:100%; gap:24px;">
                 <!-- 左侧 7/10 区域 -->
@@ -1285,7 +1287,7 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- 下半部分：跌势最猛的前10支股票 (高度1.5倍) -->
                   <div style="height:360px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
                     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
@@ -1315,7 +1317,7 @@
                     </div>
                   </div>
                 </div>
-                
+
                 <!-- 右侧 3/10 区域：推荐买卖建议和金融助手 -->
                 <div style="flex:3; height:780px; display:flex; flex-direction:column; gap:20px;">
                   <!-- Trading Recommendations - 调整为占满整个右侧区域 -->
@@ -1335,7 +1337,7 @@
                 </div>
               </div>
             `;
-            
+
             document.querySelector('.dashboard-container').appendChild(marketWrapper);
           }
           return marketWrapper;
@@ -1344,67 +1346,67 @@
           const performanceWrapper = document.getElementById('performanceWrapper');
           const manageWrapper = document.getElementById('manageWrapper');
           const marketWrapper = document.getElementById('marketWrapper');
-          
+
           // 更新全局导航按钮状态
           function updateGlobalNavButtons(activeTab) {
             perfBtn.classList.remove('active');
             manageBtn.classList.remove('active');
             marketBtn.classList.remove('active');
-            
+
             if (activeTab === 'performance') perfBtn.classList.add('active');
             if (activeTab === 'manage') manageBtn.classList.add('active');
             if (activeTab === 'market') marketBtn.classList.add('active');
           }
-          
+
           if (tab === 'performance') {
             updateGlobalNavButtons('performance');
-            
+
             // 隐藏原始的dashboard-main和header-right
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            
+
             // 隐藏其他Tab
             if (manageWrapper) manageWrapper.style.display = 'none';
             if (marketWrapper) marketWrapper.style.display = 'none';
-            
+
             // 创建并显示Performance页面
             const performance = createPerformancePage();
             performance.style.display = 'block';
-            
+
             // 延迟加载Performance相关的功能，确保DOM元素已创建
             setTimeout(() => {
               initializePerformancePage();
             }, 100);
-            
+
           } else if (tab === 'manage') {
             updateGlobalNavButtons('manage');
-            
+
             // 隐藏原始元素
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            
+
             // 隐藏其他Tab
             if (performanceWrapper) performanceWrapper.style.display = 'none';
             if (marketWrapper) marketWrapper.style.display = 'none';
-            
+
             // 显示Manage页面
             if (manageWrapper) manageWrapper.style.display = 'flex';
-            
+
           } else if (tab === 'market') {
             updateGlobalNavButtons('market');
-            
+
             // 隐藏原始元素
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            
+
             // 隐藏其他Tab
             if (performanceWrapper) performanceWrapper.style.display = 'none';
             if (manageWrapper) manageWrapper.style.display = 'none';
-            
+
             // 创建并显示Market页面
             const market = createMarketPage();
             market.style.display = 'block';
-            
+
             // 加载市场数据
             loadMarketData();
           }
@@ -1418,14 +1420,13 @@
         marketBtn.addEventListener('click', function() {
           setTab('market');
         });
-        
-        // 初始化Performance页面的功能
+
         function initializePerformancePage() {
           // 重新初始化图表和功能
           if (typeof loadPerformanceData === 'function') {
             loadPerformanceData();
           }
-          
+
           // 强制图表重新计算尺寸以适应容器
           setTimeout(() => {
             if (window.chart && typeof window.chart.resize === 'function') {
@@ -1435,11 +1436,17 @@
             if (window.allocationChart && typeof window.allocationChart.resize === 'function') {
               window.allocationChart.resize();
             }
+            // 确保 selectedAssetChart 实例在调用 updateSelectedAssetChart 之前存在
             if (window.selectedAssetChart && typeof window.selectedAssetChart.resize === 'function') {
               window.selectedAssetChart.resize();
             }
-          }, 200);
-          
+
+            // *** 修改部分：确保在所有图表初始化和resize完成后，再默认加载 Cash Value (1m) 的折线图 ***
+            // 这样可以避免被其他默认行为覆盖
+            updateSelectedAssetChart('Cash', '1m');
+
+          }, 200); // 稍微延迟，确保图表canvas已渲染且已调整大小
+
           // 重新初始化隐私切换功能
           const privacyToggle = document.getElementById('privacyToggle');
           if (privacyToggle) {
@@ -1449,7 +1456,7 @@
               }
             });
           }
-          
+
           // 重新初始化Featured Stocks功能
           const addStockForm = document.getElementById('addStockForm');
           if (addStockForm) {
@@ -1463,7 +1470,7 @@
             });
           }
         }
-        
+
         setTab('performance');
       });
     </script>
@@ -1576,43 +1583,83 @@ onClick: (event, elements) => {
 // 假设 fetchSelectedAssetPerformanceData 函数已经定义在全局作用域或可访问的模块中
 // async function fetchSelectedAssetPerformanceData(assetType, range) { ... }
 
-// 更新左下角折线图
-async function updateSelectedAssetChart(assetType, range) { // 添加 async 关键字
-  const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+// 辅助函数：将字符串首字母大写
+function capitalizeFirstLetter(string) {
+  if (!string) return '';
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
 
-  // *** 关键修改：调用 fetchSelectedAssetPerformanceData 从后端获取数据 ***
+// 辅助函数：格式化时间范围字符串 (例如: '1m' -> '1M', '7d' -> '7D')
+function formatRangeString(range) {
+  if (!range) return '';
+  // 匹配数字和字母部分
+  const match = range.match(/^(\d+)([a-zA-Z]+)$/);
+  if (match && match.length === 3) {
+    const number = match[1];
+    const unit = match[2].toUpperCase(); // 将单位转换为大写
+    return `${number}${unit}`;
+  }
+  return range; // 如果不匹配，返回原始字符串
+}
+
+
+// 更新左下角折线图
+async function updateSelectedAssetChart(assetType, range) {
+  const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+  const selectedAssetTitle = document.getElementById('selectedAssetTitle');
+
+  // 格式化 range 字符串以用于显示
+  const displayRange = formatRangeString(range);
+
+  // 在设置标题时，将 assetType 首字母大写，并使用格式化后的 range
+  if (selectedAssetTitle) {
+    selectedAssetTitle.textContent = `${capitalizeFirstLetter(assetType)} Value (${displayRange})`;
+  }
+
+  console.log(`Attempting to update chart for: ${assetType}, range: ${range}`);
+
   let data = [];
   try {
-    data = await fetchSelectedAssetPerformanceData(assetType, range);
+    const requestAssetType = assetType.toLowerCase(); // 保持这里为小写，以匹配后端
+    data = await fetchSelectedAssetPerformanceData(requestAssetType, range);
+    console.log('Data received from API:', data);
   } catch (error) {
     console.error("Failed to load historical data from API, showing empty chart.", error);
-    // 可以在这里添加用户友好的提示，例如在图表区域显示“数据加载失败”
-    if (selectedAssetChartInstance) {
-      selectedAssetChartInstance.destroy(); // 销毁旧图表实例
-      selectedAssetChartInstance = null; // 清空实例
+    if (ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available for this period.', ctx.canvas.width / 2, ctx.canvas.height / 2);
     }
-    // 返回，不尝试绘制图表
+    if (selectedAssetChartInstance) {
+      selectedAssetChartInstance.destroy();
+      selectedAssetChartInstance = null;
+    }
     return;
   }
 
-  // 检查返回的数据是否为空或无效
   if (!data || data.length === 0) {
     console.warn(`No historical data found for ${assetType} in ${range}.`);
-    if (selectedAssetChartInstance) {
-      selectedAssetChartInstance.destroy(); // 销毁旧图表实例
-      selectedAssetChartInstance = null; // 清空实例
+    if (ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available for this period.', ctx.canvas.width / 2, ctx.canvas.height / 2);
     }
-    // 可以显示一个空状态或者提示信息
+    if (selectedAssetChartInstance) {
+      selectedAssetChartInstance.destroy();
+      selectedAssetChartInstance = null;
+    }
     return;
   }
 
-  // 从后端返回的数据中提取日期和值
-  // 假设后端返回的数据格式为 [{ date: 'YYYY-MM-DD', value: number }, ...]
   const dates = data.map(item => new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
   const values = data.map(item => item.value);
 
   if (selectedAssetChartInstance) {
-    selectedAssetChartInstance.destroy(); // 销毁旧图表实例
+    selectedAssetChartInstance.destroy();
   }
 
   selectedAssetChartInstance = new Chart(ctx, {
@@ -1620,7 +1667,7 @@ async function updateSelectedAssetChart(assetType, range) { // 添加 async 关�
     data: {
       labels: dates,
       datasets: [{
-        label: `${assetType} Value (${range})`,
+        label: `${capitalizeFirstLetter(assetType)} Value (${displayRange})`, // 图例标签也使用格式化后的 range
         data: values,
         borderColor: '#db0011',
         backgroundColor: 'rgba(219, 0, 17, 0.1)',
@@ -1638,7 +1685,7 @@ async function updateSelectedAssetChart(assetType, range) { // 添加 async 关�
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true,
+          display: false, // 保持图例隐藏
           position: 'top',
           labels: {
             font: {
@@ -1692,6 +1739,7 @@ async function updateSelectedAssetChart(assetType, range) { // 添加 async 关�
     }
   });
 }
+
 
 // 注意：getAssetHistoricalData 函数现在可以被移除或注释掉，因为它不再被使用。
 // function getAssetHistoricalData(assetType, range) { ... }

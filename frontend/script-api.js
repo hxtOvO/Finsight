@@ -250,7 +250,7 @@ async function updateChart(range = '7d') {
   const performanceData = await fetchPerformanceData(range);
   const labels = getLabelsFromData(performanceData, range);
   const values = getValuesFromData(performanceData, range);
-    
+
   // 确保数据长度一致
   if (labels.length !== values.length) {
       console.error('警告：labels 和 values 长度不一致！', labels.length, values.length);
@@ -319,7 +319,7 @@ async function updateChart(range = '7d') {
                         ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
                     },
                     y: {
-                        grid: { color: '#e5e7eb' }, 
+                        grid: { color: '#e5e7eb' },
                         beginAtZero: false,
                         ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
                     }
@@ -329,14 +329,14 @@ async function updateChart(range = '7d') {
   } else {
     // 隐私模式下所有区间y轴刻度为白色，否则为深色
     chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
-    
+
     // 重新创建gradient以适应可能变化的canvas尺寸
     const ctx = document.getElementById('portfolioChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
     gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
     gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
     gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
-    
+
     chart.data.labels = labels;
     chart.data.datasets[0].data = values;
     chart.data.datasets[0].backgroundColor = gradient; // 更新gradient
@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', async function() {
   
   // Initialize chart with 7d data
   await updateChart('7d');
-  
+
   // Range toggle buttons
   document.querySelectorAll('.toggle-btn').forEach(btn => {
     btn.addEventListener('click', async function() {
