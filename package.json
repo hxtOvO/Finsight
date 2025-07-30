@@ -19,11 +19,11 @@
     "ollama": "^0.5.16",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.6",
+    "swagger-jsdoc": "^6.2.8",
     "yahoo-finance2": "^2.13.3"
   },
   "devDependencies": {
     "nodemon": "^3.0.2",
-    "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1"
   },
   "keywords": [
