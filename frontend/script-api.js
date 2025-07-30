@@ -231,7 +231,7 @@ async function updateChart(range = '7d') {
 
   if (!chart) {
     const ctx = document.getElementById('portfolioChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
     gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
     gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
     gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
@@ -256,6 +256,7 @@ async function updateChart(range = '7d') {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 animation: {
                     duration: 1600,
                     easing: 'easeOutQuart',
@@ -284,14 +285,34 @@ async function updateChart(range = '7d') {
                             }
                         }
                     }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+                    },
+                    y: {
+                        grid: { color: '#e5e7eb' }, 
+                        beginAtZero: false,
+                        ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+                    }
                 }
             }
         });
   } else {
     // 隐私模式下所有区间y轴刻度为白色，否则为深色
     chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
+    
+    // 重新创建gradient以适应可能变化的canvas尺寸
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
+    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
+    gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+    
     chart.data.labels = labels;
     chart.data.datasets[0].data = values;
+    chart.data.datasets[0].backgroundColor = gradient; // 更新gradient
     chart.update();
   }
 }
@@ -632,7 +653,7 @@ async function updateSelectedAssetChart(range = '7d') {
 
     if (!selectedAssetChart) {
         const ctx = document.getElementById('selectedAssetChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+        const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
         // 修改颜色停止点为新的颜色
         gradient.addColorStop(0, 'rgba(252, 125, 51, 0.9)'); 
         gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
@@ -658,6 +679,7 @@ async function updateSelectedAssetChart(range = '7d') {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 animation: {
                     duration: 0,
                     easing: 'easeOutQuart',
@@ -686,12 +708,31 @@ async function updateSelectedAssetChart(range = '7d') {
                             }
                         }
                     }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+                    },
+                    y: {
+                        grid: { color: '#e5e7eb' }, 
+                        beginAtZero: false,
+                        ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+                    }
                 }
             }
         });
     } else {
+        // 重新创建gradient以适应可能变化的canvas尺寸
+        const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+        const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+        gradient.addColorStop(0, 'rgba(252, 125, 51, 0.9)'); 
+        gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
+        gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
+        
         selectedAssetChart.data.labels = labels;
         selectedAssetChart.data.datasets[0].data = values;
+        selectedAssetChart.data.datasets[0].backgroundColor = gradient; // 更新gradient
         selectedAssetChart.update();
     }
 }
@@ -727,7 +768,7 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
 
   if (!selectedAssetChart) {
     const ctx = document.getElementById('selectedAssetChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
     // 修改颜色停止点为新的颜色
     gradient.addColorStop(0, 'rgba(252, 125, 51, 0.32)'); 
     gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
@@ -753,6 +794,7 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         animation: {
           duration: 1600,
           easing: 'easeOutQuart',
@@ -781,12 +823,31 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
               }
             }
           }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+          },
+          y: {
+            grid: { color: '#e5e7eb' }, 
+            beginAtZero: false,
+            ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+          }
         }
       }
     });
   } else {
+    // 重新创建gradient以适应可能变化的canvas尺寸
+    const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    gradient.addColorStop(0, 'rgba(252, 125, 51, 0.32)'); 
+    gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
+    gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
+    
     selectedAssetChart.data.labels = labels;
     selectedAssetChart.data.datasets[0].data = values;
+    selectedAssetChart.data.datasets[0].backgroundColor = gradient; // 更新gradient
     selectedAssetChart.update();
   }
 }

@@ -198,35 +198,14 @@
       gap: 8px;
     }
 
-    .toggle-btn {
-      background: #f3f4f6;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 16px;
-      font-size: 0.98rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-      color: #222;
-    }
-    .toggle-btn.active {
-      background: #db0011;
-      color: #fff;
-    }
-
     .dashboard-main {
+      /* 原dashboard-main现在被隐藏，由动态创建的wrapper替代 */
       width: 100%;
       min-height: 440px;
       display: flex;
       align-items: flex-start;
       justify-content: center;
       gap: 0;
-    }
-
-    #portfolioChart {
-      width: 100% !important;
-      height: 100% !important;
-      margin-right: 0;
     }
 
     @media (max-width: 800px) {
@@ -989,6 +968,113 @@
           });
         }
         
+        // 创建Performance页面
+        function createPerformancePage() {
+          let performanceWrapper = document.getElementById('performanceWrapper');
+          if (!performanceWrapper) {
+            performanceWrapper = document.createElement('div');
+            performanceWrapper.id = 'performanceWrapper';
+            performanceWrapper.style.display = 'none';
+            performanceWrapper.style.width = '100%';
+            performanceWrapper.style.height = '100vh';
+            performanceWrapper.style.padding = '0';
+            performanceWrapper.style.boxSizing = 'border-box';
+            performanceWrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
+            
+            performanceWrapper.innerHTML = `
+              <!-- Performance主内容区域 -->
+              <div style="width: 100%; height: 100vh; display: flex; flex-direction: column; padding-top: 80px;">
+              <!-- Performance专用的Total值区域，与FINSIGHT平行，距离400px -->
+              <div style="position: absolute; top: 90px; left: 1700px; display: flex; align-items: flex-start; gap: 20px; z-index: 100;">
+                <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode" style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+                  <span class="privacy-icon">👁️‍🗨️</span>
+                </button>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <div class="portfolio-value" id="portfolioValue" style="font-size: 1.25rem; font-weight: 700; color: #1a233a; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 200px; text-align: center; visibility: hidden;">Total: ****</div>
+                  <div class="portfolio-gain" id="portfolioGain" style="font-size: 1rem; font-weight: 600; color: #22c55e; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 200px; text-align: center; visibility: hidden;">+ $**** (+*.**%)</div>
+                </div>
+              </div>                <!-- Performance主内容区域 -->
+                <main style="flex: 1; width: 100%; display: flex; align-items: flex-start; justify-content: center; padding: 0 32px 32px 32px;">
+                  <!-- 田字格 2x2 主界面布局 -->
+                  <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:32px; width:100%; height:800px;">
+                    <!-- 左上: Portfolio Chart -->
+                    <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:76%;">
+                      <div class="range-toggle" style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button class="toggle-btn active" data-range="7d" data-chart="portfolio" style="background: #db0011; color: #fff; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.98rem; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s;">7 Days</button>
+                        <button class="toggle-btn" data-range="1m" data-chart="portfolio" style="background: #f3f4f6; color: #222; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.98rem; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s;">1 Month</button>
+                        <button class="toggle-btn" data-range="6m" data-chart="portfolio" style="background: #f3f4f6; color: #222; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.98rem; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s;">6 Months</button>
+                      </div>
+                      <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <div class="dashboard-content" id="dashboardContent" style="width:100%;">
+                          <div id="allocationSection" style="display:none; width:100%;"></div>
+                          <canvas id="portfolioChart" style="width: 100% !important; height: 100% !important; max-width: 100%; margin: 0; box-sizing: border-box;"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 右上: Allocation Pie Chart -->
+                    <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; align-items:flex-start; justify-content:flex-start; width:100%; margin-left:-15%;">
+                      <div style="display:flex; align-items:center; justify-content:flex-start; width:85%; height:100%; margin-left:2px;">
+                        <canvas id="allocationChart" style="max-width:351px; max-height:351px;"></canvas>
+                        <div id="allocationLegend" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-left:10px; gap:14px;">
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#006560; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(0,101,96,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Cash</span></div>
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#5b7d79; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(91,125,121,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Stock</span></div>
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#c1b89a; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(193,184,154,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Bond</span></div>
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#e9e9e8; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(233,233,232,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Other</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 左下: Selected Asset Chart -->
+                    <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:76%;">
+                      <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <div class="dashboard-content" style="width:100%;">
+                          <canvas id="selectedAssetChart" style="width: 100% !important; height: 100% !important; max-width: 100%; margin: 0; box-sizing: border-box;"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 右下: Featured Stocks -->
+                    <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; overflow:hidden; margin-left:-15%;">
+                      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                        <div class="featured-title" style="margin-bottom:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Featured Stocks</div>
+                        <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
+                          <input class="add-stock-input" id="stockInput" type="text" placeholder="Symbol" maxlength="16" required style="width:70px; padding:4px 8px; font-size:14px; border: 1px solid #e5e7eb; border-radius: 6px;" />
+                          <button class="add-stock-btn" id="addBtn" type="submit" style="width:44px; font-size:14px; padding:4px 0; background: #db0011; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Add</button>
+                        </form>
+                      </div>
+                      <div class="featured-list" id="featuredList"></div>
+                      <div class="error-msg" id="errorMsg" style="margin-bottom:0; color: #ef4444; font-size: 14px;"></div>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            `;
+            
+            document.querySelector('.dashboard-container').appendChild(performanceWrapper);
+            
+            // 为Performance页面的toggle按钮添加事件监听器
+            setTimeout(() => {
+              const performanceToggleBtns = performanceWrapper.querySelectorAll('.toggle-btn');
+              performanceToggleBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                  // 移除其他按钮的active类
+                  performanceToggleBtns.forEach(b => {
+                    b.style.background = '#f3f4f6';
+                    b.style.color = '#222';
+                    b.classList.remove('active');
+                  });
+                  // 添加当前按钮的active类
+                  this.style.background = '#db0011';
+                  this.style.color = '#fff';
+                  this.classList.add('active');
+                });
+              });
+            }, 100);
+          }
+          return performanceWrapper;
+        }
+        
         // 创建Market页面
         function createMarketPage() {
           let marketWrapper = document.getElementById('marketWrapper');
@@ -1120,33 +1206,64 @@
           return marketWrapper;
         }
         function setTab(tab) {
+          const performanceWrapper = document.getElementById('performanceWrapper');
+          const manageWrapper = document.getElementById('manageWrapper');
           const marketWrapper = document.getElementById('marketWrapper');
           
-          if (tab === 'performance') {
-            perfBtn.classList.add('active');
+          // 更新全局导航按钮状态
+          function updateGlobalNavButtons(activeTab) {
+            perfBtn.classList.remove('active');
             manageBtn.classList.remove('active');
             marketBtn.classList.remove('active');
-            if (dashboardMain) dashboardMain.style.display = '';
-            if (headerRight) headerRight.style.display = '';
-            const manageWrapper = document.getElementById('manageWrapper');
+            
+            if (activeTab === 'performance') perfBtn.classList.add('active');
+            if (activeTab === 'manage') manageBtn.classList.add('active');
+            if (activeTab === 'market') marketBtn.classList.add('active');
+          }
+          
+          if (tab === 'performance') {
+            updateGlobalNavButtons('performance');
+            
+            // 隐藏原始的dashboard-main和header-right
+            if (dashboardMain) dashboardMain.style.display = 'none';
+            if (headerRight) headerRight.style.display = 'none';
+            
+            // 隐藏其他Tab
             if (manageWrapper) manageWrapper.style.display = 'none';
             if (marketWrapper) marketWrapper.style.display = 'none';
+            
+            // 创建并显示Performance页面
+            const performance = createPerformancePage();
+            performance.style.display = 'block';
+            
+            // 延迟加载Performance相关的功能，确保DOM元素已创建
+            setTimeout(() => {
+              initializePerformancePage();
+            }, 100);
+            
           } else if (tab === 'manage') {
-            perfBtn.classList.remove('active');
-            manageBtn.classList.add('active');
-            marketBtn.classList.remove('active');
+            updateGlobalNavButtons('manage');
+            
+            // 隐藏原始元素
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            const manageWrapper = document.getElementById('manageWrapper');
-            if (manageWrapper) manageWrapper.style.display = 'flex';
+            
+            // 隐藏其他Tab
+            if (performanceWrapper) performanceWrapper.style.display = 'none';
             if (marketWrapper) marketWrapper.style.display = 'none';
+            
+            // 显示Manage页面
+            if (manageWrapper) manageWrapper.style.display = 'flex';
+            
           } else if (tab === 'market') {
-            perfBtn.classList.remove('active');
-            manageBtn.classList.remove('active');
-            marketBtn.classList.add('active');
+            updateGlobalNavButtons('market');
+            
+            // 隐藏原始元素
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            const manageWrapper = document.getElementById('manageWrapper');
+            
+            // 隐藏其他Tab
+            if (performanceWrapper) performanceWrapper.style.display = 'none';
             if (manageWrapper) manageWrapper.style.display = 'none';
             
             // 创建并显示Market页面
@@ -1166,78 +1283,69 @@
         marketBtn.addEventListener('click', function() {
           setTab('market');
         });
+        
+        // 初始化Performance页面的功能
+        function initializePerformancePage() {
+          // 重新初始化图表和功能
+          if (typeof loadPerformanceData === 'function') {
+            loadPerformanceData();
+          }
+          
+          // 强制图表重新计算尺寸以适应容器
+          setTimeout(() => {
+            if (window.chart && typeof window.chart.resize === 'function') {
+              window.chart.resize();
+            }
+            // 如果有其他图表实例也需要resize
+            if (window.allocationChart && typeof window.allocationChart.resize === 'function') {
+              window.allocationChart.resize();
+            }
+            if (window.selectedAssetChart && typeof window.selectedAssetChart.resize === 'function') {
+              window.selectedAssetChart.resize();
+            }
+          }, 200);
+          
+          // 重新初始化隐私切换功能
+          const privacyToggle = document.getElementById('privacyToggle');
+          if (privacyToggle) {
+            privacyToggle.addEventListener('click', function() {
+              if (typeof togglePrivacy === 'function') {
+                togglePrivacy();
+              }
+            });
+          }
+          
+          // 重新初始化Featured Stocks功能
+          const addStockForm = document.getElementById('addStockForm');
+          if (addStockForm) {
+            addStockForm.addEventListener('submit', function(e) {
+              e.preventDefault();
+              const stockInput = document.getElementById('stockInput');
+              if (stockInput && typeof addFeaturedStock === 'function') {
+                addFeaturedStock(stockInput.value.trim().toUpperCase());
+                stockInput.value = '';
+              }
+            });
+          }
+        }
+        
         setTab('performance');
       });
     </script>
         </div>
       </div>
-      <div class="header-right">
-        <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode">
+      <div class="header-right" style="display: none;">
+        <!-- 原header-right内容现在集成到Performance页面中 -->
+        <button class="privacy-toggle" id="privacyToggleOld" title="Toggle Privacy Mode">
           <span class="privacy-icon">👁️‍🗨️</span>
         </button>
-        <div class="portfolio-value" id="portfolioValue">Total: ****</div>
-        <div class="portfolio-gain" id="portfolioGain">+ $**** (+*.**%)</div>
-        
+        <div class="portfolio-value" id="portfolioValueOld">Total: ****</div>
+        <div class="portfolio-gain" id="portfolioGainOld">+ $**** (+*.**%)</div>
       </div>
     </header>
-    <main class="dashboard-main">
-      <!-- 田字格 2x2 主界面布局 -->
-      <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:32px; width:100%; height:800px; margin-top:16px;">
-        <!-- 6:4分布，左侧更宽 -->
-        <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
-          <div class="range-toggle">
-            <button class="toggle-btn active" data-range="7d" data-chart="portfolio">7 Days</button>
-            <button class="toggle-btn" data-range="1m" data-chart="portfolio">1 Month</button>
-            <button class="toggle-btn" data-range="6m" data-chart="portfolio">6 Months</button>
-          </div>
-          <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <!-- dashboard-nav已移至header-left -->
-            <div class="dashboard-content" id="dashboardContent" style="width:100%;">
-              <div id="allocationSection" style="display:none; width:100%;">
-                <!-- Pie chart removed from here -->
-              </div>
-              <canvas id="portfolioChart"></canvas>
-            </div>
-          </div>
-        </div>
-        <!-- Top Right: Allocation Pie Chart -->
-        <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; align-items:flex-start; justify-content:flex-start; width:100%;">
-          <div style="display:flex; align-items:center; justify-content:flex-start; width:85%; height:100%; margin-left:2px;">
-            <canvas id="allocationChart" style="max-width:351px; max-height:351px;"></canvas>
-            <div id="allocationLegend" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-left:10px; gap:14px; ">
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#006560; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(0,101,96,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Cash</span></div>
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#5b7d79; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(91,125,121,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Stock</span></div>
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#c1b89a; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(193,184,154,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Bond</span></div>
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#e9e9e8; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(233,233,232,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Other</span></div>
-            </div>
-          </div>
-        </div>
-        <!-- Bottom Left: 空 -->
-        <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
-          <!-- <div class="range-toggle">
-            <button class="toggle-btn active" data-range="7d" data-chart="selectedAsset">7 Days</button>
-            <button class="toggle-btn" data-range="1m" data-chart="selectedAsset">1 Month</button>
-            <button class="toggle-btn" data-range="6m" data-chart="selectedAsset">6 Months</button>
-          </div> -->
-          <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <div class="dashboard-content",id="", style="width:100%;">
-              <canvas id="selectedAssetChart"></canvas>
-            </div>
-          </div>
-        </div>
-        <!-- Bottom Right: Featured Stocks -->
-        <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-            <div class="featured-title" style="margin-bottom:0;">Featured Stocks</div>
-            <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
-              <input class="add-stock-input" id="stockInput" type="text" placeholder="Symbol" maxlength="16" required style="width:70px; padding:4px 8px; font-size:14px;" />
-              <button class="add-stock-btn" id="addBtn" type="submit" style="width:44px; font-size:14px; padding:4px 0;">Add</button>
-            </form>
-          </div>
-          <div class="featured-list" id="featuredList"></div>
-          <div class="error-msg" id="errorMsg" style="margin-bottom:0;"></div>
-        </div>
-      </div>
+    <!-- 原始的dashboard-main现在被隐藏，由动态创建的performanceWrapper替代 -->
+    <main class="dashboard-main" style="display: none;">
+      <!-- 原Performance内容已迁移到createPerformancePage()函数中 -->
     </main>
   </div>
   <script src="script-api.js"></script>
