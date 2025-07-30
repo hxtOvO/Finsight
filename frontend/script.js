@@ -116,6 +116,7 @@ function updateChart(labels, data) {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         animation: {
           // duration: 1500,
           // easing: 'easeOutQuart'
