@@ -1141,12 +1141,12 @@
               <div style="width: 100%; height: 100vh; display: flex; flex-direction: column; padding-top: 80px;">
               <!-- Performance专用的Total值区域，与FINSIGHT平行，距离400px -->
               <div style="position: absolute; top: 90px; left: 1550px; display: flex; align-items: flex-start; gap: 20px; z-index: 100;">
-                <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode" style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-                  <span class="privacy-icon">👁️‍🗨️</span>
+                <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode" style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 40px; justify-content: center;">
+                  <i class="fas fa-eye-slash" style="font-size: 16px; color: #666;"></i>
                 </button>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
-                  <div class="portfolio-value" id="portfolioValue" style="font-size: 1.25rem; font-weight: 700; color: #1a233a; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 200px; text-align: center; visibility: hidden;">Total: ****</div>
-                  <div class="portfolio-gain" id="portfolioGain" style="font-size: 1rem; font-weight: 600; color: #22c55e; background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 200px; text-align: center; visibility: hidden;">+ $**** (+*.**%)</div>
+                  <div class="portfolio-value" id="portfolioValue" style="font-size: 1.6rem; font-weight: 900; color: #1a233a; background: #fff; border-radius: 8px; padding: 12px 20px; min-width: 200px; text-align: center; visibility: hidden;">Total: ****</div>
+                  <div class="portfolio-gain" id="portfolioGain" style="font-size: 1.2rem; font-weight: 700; color: #22c55e; background: #fff; border-radius: 8px; padding: 12px 20px; min-width: 200px; text-align: center; visibility: hidden;">+ $**** (+*.**%)</div>
                 </div>
               </div>                <!-- Performance主内容区域 -->
                 <main style="flex: 1; width: 100%; display: flex; align-items: flex-start; justify-content: center; padding: 0 32px 32px 32px;">
@@ -1190,7 +1190,11 @@
                     
                     <!-- 左下: Selected Asset Chart -->
                     <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; display:flex; flex-direction:column; width:76%; height:100%; overflow:hidden;">
-                      <div style="width:100%; height:100%; position:relative;">
+                      <!-- 动态标题 -->
+                      <div style="margin-bottom:16px;">
+                        <h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Performance</h3>
+                      </div>
+                      <div style="width:100%; flex:1; position:relative;">
                         <canvas id="selectedAssetChart" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
                       </div>
                     </div>
@@ -1314,48 +1318,18 @@
                 
                 <!-- 右侧 3/10 区域：推荐买卖建议和金融助手 -->
                 <div style="flex:3; height:780px; display:flex; flex-direction:column; gap:20px;">
-                  <!-- 上半部分：推荐买卖建议 -->
-                  <div style="height:350px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
+                  <!-- Trading Recommendations - 调整为占满整个右侧区域 -->
+                  <div style="height:780px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
                     <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
                       💡 <span>Trading Recommendations</span>
                     </h3>
-                    <div id="tradingRecommendations" style="height:270px; overflow-y:auto; padding-right:8px;">
+                    <div id="tradingRecommendations" style="height:700px; overflow-y:auto; padding-right:8px;">
                       <div id="recommendationsData" style="display:flex; flex-direction:column; gap:16px;">
                         <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
                           <div style="margin-bottom:12px;">🤖</div>
                           Loading recommendations...
                         </div>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <!-- 下半部分：金融助手聊天 -->
-                  <div style="height:390px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb; display:flex; flex-direction:column;">
-                    <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
-                      🧠 <span>Financial Assistant</span>
-                    </h3>
-                    
-                    <!-- 聊天消息区域 -->
-                    <div id="chatMessages" style="flex:1; overflow-y:auto; border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f8fafc; margin-bottom:16px; font-size:14px; line-height:1.5;">
-                      <div style="text-align:center; padding:20px; color:#9ca3af;">
-                        <div style="margin-bottom:8px;">💬</div>
-                        <div>Ask me anything about your portfolio or market trends!</div>
-                      </div>
-                    </div>
-                    
-                    <!-- 输入区域 -->
-                    <div style="display:flex; gap:12px; align-items:flex-end;">
-                      <textarea id="chatInput" placeholder="Ask about your portfolio, market trends, or get investment advice..." 
-                        style="flex:1; padding:12px 16px; border:2px solid #e5e7eb; border-radius:12px; resize:none; font-size:14px; font-family:inherit; line-height:1.4; min-height:44px; max-height:80px; transition:border-color 0.2s; outline:none;"
-                        onkeydown="handleChatKeydown(event)"
-                        onfocus="this.style.borderColor='#3b82f6'"
-                        onblur="this.style.borderColor='#e5e7eb'"></textarea>
-                      <button id="sendChatBtn" onclick="sendChatMessage()" 
-                        style="padding:12px 20px; background:#3b82f6; color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer; transition:background 0.2s; white-space:nowrap; height:44px;"
-                        onmouseover="this.style.background='#2563eb'"
-                        onmouseout="this.style.background='#3b82f6'">
-                        Send
-                      </button>
                     </div>
                   </div>
                 </div>

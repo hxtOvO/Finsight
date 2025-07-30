@@ -24,16 +24,16 @@ function togglePrivacyMode() {
   const privacyToggle = document.getElementById('privacyToggle');
   
   if (isPrivacyMode) {
-    // 隐私模式：隐藏敏感信息
+    // 隐私模式：隐藏敏感信息，但保持图标可见
     privacyToggle.classList.add('active');
-    privacyToggle.innerHTML = '<i class="fas fa-eye-slash"></i> 隐私模式';
+    privacyToggle.innerHTML = '<i class="fas fa-eye-slash" style="font-size: 16px; color: #666;"></i>';
     document.querySelectorAll('.value').forEach(el => {
       el.style.filter = 'blur(8px)';
     });
   } else {
     // 正常模式：显示所有信息
     privacyToggle.classList.remove('active');
-    privacyToggle.innerHTML = '<i class="fas fa-eye"></i> 显示数据';
+    privacyToggle.innerHTML = '<i class="fas fa-eye" style="font-size: 16px; color: #666;"></i>';
     document.querySelectorAll('.value').forEach(el => {
       el.style.filter = 'none';
     });
@@ -43,6 +43,27 @@ function togglePrivacyMode() {
   const range = typeof currentRange === 'string' ? currentRange : (window.currentRange || '7d');
   updatePortfolioHeader(range);
   updateChart(range);
+}
+
+// 初始化隐私模式按钮
+function initializePrivacyButton() {
+  const privacyToggle = document.getElementById('privacyToggle');
+  if (privacyToggle) {
+    // 确保隐私模式下有正确的active类
+    if (isPrivacyMode) {
+      privacyToggle.classList.add('active');
+    }
+    
+    // 检查Font Awesome是否加载，如果没有则使用fallback
+    setTimeout(() => {
+      const icon = privacyToggle.querySelector('i');
+      if (icon && window.getComputedStyle(icon, ':before').content === 'none') {
+        // Font Awesome没有加载，使用Unicode fallback
+        privacyToggle.innerHTML = isPrivacyMode ? '🙈' : '👁️';
+        privacyToggle.style.fontSize = '16px';
+      }
+    }, 100);
+  }
 }
 
 // 清除缓存函数
@@ -544,10 +565,16 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 初始化隐私模式为开启状态
   isPrivacyMode = true;
   
+  // 初始化隐私按钮图标
+  initializePrivacyButton();
+  
   // 添加隐私切换按钮事件监听器
   const privacyToggle = document.getElementById('privacyToggle');
   if (privacyToggle) {
+    console.log('🔒 隐私按钮初始化成功');
     privacyToggle.addEventListener('click', togglePrivacyMode);
+  } else {
+    console.error('❌ 找不到隐私按钮元素');
   }
   
   // 清除缓存确保获取新数据
@@ -650,6 +677,13 @@ async function fetchSelectedAssetPerformanceData(assetType, range) {
 }
 
 async function updateSelectedAssetChart(assetType, range = '7d') {
+  // 更新左下角的动态标题
+  const titleElement = document.getElementById('selectedAssetTitle');
+  if (titleElement) {
+    const capitalizedAssetType = assetType.charAt(0).toUpperCase() + assetType.slice(1);
+    titleElement.textContent = `${capitalizedAssetType} Performance`;
+  }
+  
   let performanceData = await fetchSelectedAssetPerformanceData(assetType, range);
   
   // 如果特定资产数据为空，使用通用performance数据作为fallback
