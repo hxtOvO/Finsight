@@ -24,21 +24,46 @@ function togglePrivacyMode() {
   const privacyToggle = document.getElementById('privacyToggle');
   
   if (isPrivacyMode) {
-    // 隐私模式：隐藏敏感信息
-    privacyToggle.classList.remove('active');
-    privacyToggle.innerHTML = '<span class="privacy-icon">👁️‍🗨️</span>';
-    privacyToggle.title = 'Show Financial Data';
-  } else {
-    // 显示模式：显示所有信息
+    // 隐私模式：隐藏敏感信息，但保持图标可见
     privacyToggle.classList.add('active');
-    privacyToggle.innerHTML = '<span class="privacy-icon">👁️</span>';
-    privacyToggle.title = 'Hide Financial Data';
+    privacyToggle.innerHTML = '<i class="fas fa-eye-slash" style="font-size: 16px; color: #666;"></i>';
+    document.querySelectorAll('.value').forEach(el => {
+      el.style.filter = 'blur(8px)';
+    });
+  } else {
+    // 正常模式：显示所有信息
+    privacyToggle.classList.remove('active');
+    privacyToggle.innerHTML = '<i class="fas fa-eye" style="font-size: 16px; color: #666;"></i>';
+    document.querySelectorAll('.value').forEach(el => {
+      el.style.filter = 'none';
+    });
   }
   
   // 重新更新头部信息和图表以应用隐私设置（保持当前区间）
   const range = typeof currentRange === 'string' ? currentRange : (window.currentRange || '7d');
   updatePortfolioHeader(range);
   updateChart(range);
+}
+
+// 初始化隐私模式按钮
+function initializePrivacyButton() {
+  const privacyToggle = document.getElementById('privacyToggle');
+  if (privacyToggle) {
+    // 确保隐私模式下有正确的active类
+    if (isPrivacyMode) {
+      privacyToggle.classList.add('active');
+    }
+    
+    // 检查Font Awesome是否加载，如果没有则使用fallback
+    setTimeout(() => {
+      const icon = privacyToggle.querySelector('i');
+      if (icon && window.getComputedStyle(icon, ':before').content === 'none') {
+        // Font Awesome没有加载，使用Unicode fallback
+        privacyToggle.innerHTML = isPrivacyMode ? '🙈' : '👁️';
+        privacyToggle.style.fontSize = '16px';
+      }
+    }, 100);
+  }
 }
 
 // 清除缓存函数
@@ -196,12 +221,14 @@ function getLabelsFromData(data, range) {
     if (range === '6m') {
         return data.map(item => {
             const date = new Date(item.date);
-            // 手动构建 UTC 格式的日期字符串
+            // 对于6个月范围，通常显示月份和年份，日期加1的意义不大，保持不变
             return `${date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${date.getUTCFullYear()}`;
         });
     } else {
         return data.map(item => {
             const date = new Date(item.date);
+            // 将日期加1天
+            date.setDate(date.getDate() + 1); // 关键修改：日期加1
             // 手动构建 UTC 格式的日期字符串
             return `${date.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })} ${date.getUTCDate()}`;
         });
@@ -231,7 +258,7 @@ async function updateChart(range = '7d') {
 
   if (!chart) {
     const ctx = document.getElementById('portfolioChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
     gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
     gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
     gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
@@ -256,11 +283,12 @@ async function updateChart(range = '7d') {
             },
             options: {
                 responsive: true,
+                maintainAspectRatio: false,
                 animation: {
                     duration: 1600,
                     easing: 'easeOutQuart',
-                    animateScale: true,
-                    animateRotate: true,
+                    animateScale: false,
+                    animateRotate: false,
                 },
                 plugins: {
                     legend: { display: false },
@@ -284,15 +312,35 @@ async function updateChart(range = '7d') {
                             }
                         }
                     }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+                    },
+                    y: {
+                        grid: { color: '#e5e7eb' }, 
+                        beginAtZero: false,
+                        ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+                    }
                 }
             }
         });
   } else {
     // 隐私模式下所有区间y轴刻度为白色，否则为深色
     chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
+    
+    // 重新创建gradient以适应可能变化的canvas尺寸
+    const ctx = document.getElementById('portfolioChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
+    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
+    gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+    
     chart.data.labels = labels;
     chart.data.datasets[0].data = values;
-    chart.update();
+    chart.data.datasets[0].backgroundColor = gradient; // 更新gradient
+    chart.update('active');
   }
 }
 
@@ -363,6 +411,12 @@ async function createAllocationChart() {
         responsive: true,
         maintainAspectRatio: true,
         aspectRatio: 1,
+        animation: {
+          duration: 1600,
+          easing: 'easeOutQuart',
+          animateScale: false,
+          animateRotate: false,
+        },
         layout: {
           padding: {
             top: 40,
@@ -513,10 +567,16 @@ document.addEventListener('DOMContentLoaded', async function() {
   // 初始化隐私模式为开启状态
   isPrivacyMode = true;
   
+  // 初始化隐私按钮图标
+  initializePrivacyButton();
+  
   // 添加隐私切换按钮事件监听器
   const privacyToggle = document.getElementById('privacyToggle');
   if (privacyToggle) {
+    console.log('🔒 隐私按钮初始化成功');
     privacyToggle.addEventListener('click', togglePrivacyMode);
+  } else {
+    console.error('❌ 找不到隐私按钮元素');
   }
   
   // 清除缓存确保获取新数据
@@ -599,103 +659,6 @@ async function fetchSelectedAssetData(range) {
     }
 }
 
-// 在页面加载时初始化 selectedAssetChart
-document.addEventListener('DOMContentLoaded', function() {
-    // 初始化 selectedAssetChart
-    updateSelectedAssetChart('7d');
-
-    // 为左下角的切换按钮添加事件监听器
-    document.querySelectorAll('.range-toggle button[data-chart="selectedAsset"]').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.querySelectorAll('.range-toggle button[data-chart="selectedAsset"]').forEach(b => b.classList.remove('active'));
-            this.classList.add('active');
-            const range = this.dataset.range;
-            updateSelectedAssetChart(range);
-        });
-    });
-});
-
-// 新增函数，用于获取数据并更新 selectedAssetChart
-async function updateSelectedAssetChart(range = '7d') {
-    const performanceData = await fetchPerformanceData(range);
-    const labels = getLabelsFromData(performanceData, range);
-    const values = getValuesFromData(performanceData, range);
-
-    // 添加日志，检查处理后的数据
-    console.log('处理后的 selectedAssetChart labels:', labels);
-    console.log('处理后的 selectedAssetChart values:', values);
-
-    // 确保数据长度一致
-    if (labels.length !== values.length) {
-        console.error('警告：selectedAssetChart 的 labels 和 values 长度不一致！', labels.length, values.length);
-    }
-
-    if (!selectedAssetChart) {
-        const ctx = document.getElementById('selectedAssetChart').getContext('2d');
-        const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-        // 修改颜色停止点为新的颜色
-        gradient.addColorStop(0, 'rgba(252, 125, 51, 0.9)'); 
-        gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
-        gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
-
-        selectedAssetChart = new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Selected Asset Value',
-                    data: values,
-                    borderColor: '#ff701dff',
-                    backgroundColor: gradient,
-                    pointRadius: 0,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: '#fff',
-                    pointBorderColor: '#ff701dff',
-                    borderWidth: 2,
-                    fill: true,
-                    tension: 0.38
-                }]
-            },
-            options: {
-                responsive: true,
-                animation: {
-                    duration: 0,
-                    easing: 'easeOutQuart',
-                    animateScale: true,
-                    animateRotate: true,
-                },
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        mode: 'nearest',
-                        intersect: false,
-                        backgroundColor: '#fff',
-                        titleColor: '#ff701dff',
-                        bodyColor: '#222',
-                        borderColor: '#ff701dff',
-                        borderWidth: 1,
-                        padding: 12,
-                        titleFont: { weight: 'bold', size: 16 },
-                        bodyFont: { size: 15 },
-                        callbacks: {
-                            title: function(tooltipItems) {
-                                return tooltipItems[0].label;
-                            },
-                            label: function(context) {
-                                return formatMoney(context.parsed.y);
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    } else {
-        selectedAssetChart.data.labels = labels;
-        selectedAssetChart.data.datasets[0].data = values;
-        selectedAssetChart.update();
-    }
-}
-
 async function fetchSelectedAssetPerformanceData(assetType, range) {
   try {
     //let assetType = 'stock';
@@ -716,7 +679,21 @@ async function fetchSelectedAssetPerformanceData(assetType, range) {
 }
 
 async function updateSelectedAssetChart(assetType, range = '7d') {
-  const performanceData = await fetchSelectedAssetPerformanceData(assetType, range);
+  // 更新左下角的动态标题
+  const titleElement = document.getElementById('selectedAssetTitle');
+  if (titleElement) {
+    const capitalizedAssetType = assetType.charAt(0).toUpperCase() + assetType.slice(1);
+    titleElement.textContent = `${capitalizedAssetType} Performance`;
+  }
+  
+  let performanceData = await fetchSelectedAssetPerformanceData(assetType, range);
+  
+  // 如果特定资产数据为空，使用通用performance数据作为fallback
+  if (!performanceData || performanceData.length === 0) {
+    console.log(`📊 ${assetType} 数据为空，使用通用performance数据作为fallback`);
+    performanceData = await fetchPerformanceData(range);
+  }
+  
   const labels = getLabelsFromData(performanceData, range);
   const values = getValuesFromData(performanceData, range);
     
@@ -727,25 +704,62 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
 
   if (!selectedAssetChart) {
     const ctx = document.getElementById('selectedAssetChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
-    // 修改颜色停止点为新的颜色
-    gradient.addColorStop(0, 'rgba(252, 125, 51, 0.32)'); 
-    gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
-    gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    
+    // 根据资产类型设置初始颜色主题
+    let borderColor = '#ff701dff';
+    let labelColor = assetType;
+    
+    switch(assetType.toLowerCase()) {
+      case 'cash':
+        gradient.addColorStop(0, 'rgba(76, 175, 80, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(76, 175, 80, 0.12)');
+        gradient.addColorStop(1, 'rgba(76, 175, 80, 0.01)');
+        borderColor = '#4CAF50';
+        labelColor = 'Cash';
+        break;
+      case 'stocks':
+        gradient.addColorStop(0, 'rgba(33, 150, 243, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(33, 150, 243, 0.12)');
+        gradient.addColorStop(1, 'rgba(33, 150, 243, 0.01)');
+        borderColor = '#2196F3';
+        labelColor = 'Stocks';
+        break;
+      case 'bonds':
+        gradient.addColorStop(0, 'rgba(255, 152, 0, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(255, 152, 0, 0.12)');
+        gradient.addColorStop(1, 'rgba(255, 152, 0, 0.01)');
+        borderColor = '#FF9800';
+        labelColor = 'Bonds';
+        break;
+      case 'crypto':
+        gradient.addColorStop(0, 'rgba(156, 39, 176, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(156, 39, 176, 0.12)');
+        gradient.addColorStop(1, 'rgba(156, 39, 176, 0.01)');
+        borderColor = '#9C27B0';
+        labelColor = 'Crypto';
+        break;
+      default:
+        gradient.addColorStop(0, 'rgba(252, 125, 51, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
+        gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
+        borderColor = '#ff701dff';
+        labelColor = 'Portfolio';
+    }
 
     selectedAssetChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: labels,
         datasets: [{
-          label: `${assetType} Asset Value`,
+          label: `${labelColor} Performance`,
           data: values,
-          borderColor: '#ff701dff',
+          borderColor: borderColor,
           backgroundColor: gradient,
           pointRadius: 0,
           pointHoverRadius: 6,
           pointBackgroundColor: '#fff',
-          pointBorderColor: '#ff701dff',
+          pointBorderColor: borderColor,
           borderWidth: 2,
           fill: true,
           tension: 0.38
@@ -753,6 +767,7 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
       },
       options: {
         responsive: true,
+        maintainAspectRatio: false,
         animation: {
           duration: 1600,
           easing: 'easeOutQuart',
@@ -765,9 +780,9 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
             mode: 'nearest',
             intersect: false,
             backgroundColor: '#fff',
-            titleColor: '#ff701dff',
+            titleColor: borderColor,
             bodyColor: '#222',
-            borderColor: '#ff701dff',
+            borderColor: borderColor,
             borderWidth: 1,
             padding: 12,
             titleFont: { weight: 'bold', size: 16 },
@@ -781,12 +796,87 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
               }
             }
           }
+        },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+          },
+          y: {
+            grid: { color: '#e5e7eb' }, 
+            beginAtZero: false,
+            ticks: { font: { size: 16, family: 'Arial' }, color: '#222' }
+          }
         }
       }
     });
   } else {
+    // 重新创建gradient以适应可能变化的canvas尺寸和资产类型
+    const ctx = document.getElementById('selectedAssetChart').getContext('2d');
+    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+    
+    // 根据资产类型设置不同的颜色主题
+    let borderColor = '#ff701dff';
+    let labelColor = assetType;
+    
+    switch(assetType.toLowerCase()) {
+      case 'cash':
+        gradient.addColorStop(0, 'rgba(76, 175, 80, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(76, 175, 80, 0.12)');
+        gradient.addColorStop(1, 'rgba(76, 175, 80, 0.01)');
+        borderColor = '#4CAF50';
+        labelColor = 'Cash';
+        break;
+      case 'stocks':
+        gradient.addColorStop(0, 'rgba(33, 150, 243, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(33, 150, 243, 0.12)');
+        gradient.addColorStop(1, 'rgba(33, 150, 243, 0.01)');
+        borderColor = '#2196F3';
+        labelColor = 'Stocks';
+        break;
+      case 'bonds':
+        gradient.addColorStop(0, 'rgba(255, 152, 0, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(255, 152, 0, 0.12)');
+        gradient.addColorStop(1, 'rgba(255, 152, 0, 0.01)');
+        borderColor = '#FF9800';
+        labelColor = 'Bonds';
+        break;
+      case 'crypto':
+        gradient.addColorStop(0, 'rgba(156, 39, 176, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(156, 39, 176, 0.12)');
+        gradient.addColorStop(1, 'rgba(156, 39, 176, 0.01)');
+        borderColor = '#9C27B0';
+        labelColor = 'Crypto';
+        break;
+      default:
+        gradient.addColorStop(0, 'rgba(252, 125, 51, 0.32)');
+        gradient.addColorStop(0.5, 'rgba(255, 112, 29, 0.12)');
+        gradient.addColorStop(1, 'rgba(255, 112, 29, 0.01)');
+        borderColor = '#ff701dff';
+        labelColor = 'Portfolio';
+    }
+    
     selectedAssetChart.data.labels = labels;
     selectedAssetChart.data.datasets[0].data = values;
-    selectedAssetChart.update();
+    selectedAssetChart.data.datasets[0].backgroundColor = gradient;
+    selectedAssetChart.data.datasets[0].borderColor = borderColor;
+    selectedAssetChart.data.datasets[0].label = `${labelColor} Performance`;
+    selectedAssetChart.update('active');
   }
 }
+
+// 在页面加载时初始化 selectedAssetChart
+document.addEventListener('DOMContentLoaded', function() {
+    // 初始化 selectedAssetChart，默认显示 Cash 资产
+    updateSelectedAssetChart('cash', '7d');
+
+    // 为左下角的切换按钮添加事件监听器
+    document.querySelectorAll('.range-toggle button[data-chart="selectedAsset"]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.range-toggle button[data-chart="selectedAsset"]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            const range = this.dataset.range;
+            updateSelectedAssetChart('cash', range);
+        });
+    });
+});

@@ -94,11 +94,10 @@
 }
 
 #portfolioChart {
-  width: 320px !important;
+  width: 100% !important;
   /* max-width: 600px; */
-  width: 320px !important;
   /* max-width: 600px; */
-  height: 320px !important;
+  height: 100% !important;
 }
 
 #allocationChart {

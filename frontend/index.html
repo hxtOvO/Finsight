@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -198,35 +198,14 @@
       gap: 8px;
     }
 
-    .toggle-btn {
-      background: #f3f4f6;
-      border: none;
-      border-radius: 6px;
-      padding: 6px 16px;
-      font-size: 0.98rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background 0.2s, color 0.2s;
-      color: #222;
-    }
-    .toggle-btn.active {
-      background: #db0011;
-      color: #fff;
-    }
-
     .dashboard-main {
+      /* 原dashboard-main现在被隐藏，由动态创建的wrapper替代 */
       width: 100%;
       min-height: 440px;
       display: flex;
       align-items: flex-start;
       justify-content: center;
       gap: 0;
-    }
-
-    #portfolioChart {
-      width: 100% !important;
-      height: 100% !important;
-      margin-right: 0;
     }
 
     @media (max-width: 800px) {
@@ -246,6 +225,52 @@
   </style>
 </head>
 <body>
+  <!-- 全局客服按钮 -->
+  <button id="customerServiceBtn" onclick="document.getElementById('qwenChatModal').style.display='flex'" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; background: linear-gradient(135deg, #db0011 0%, #ff4757 100%); border: none; border-radius: 50%; cursor: pointer; box-shadow: 0 4px 20px rgba(219, 0, 17, 0.3); z-index: 1000; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 6px 25px rgba(219, 0, 17, 0.4)'" onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='0 4px 20px rgba(219, 0, 17, 0.3)'">
+    <span style="font-size: 24px;">🤖</span>
+  </button>
+
+  <!-- Qwen客服弹窗 -->
+  <div id="qwenChatModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); z-index: 1001; display: none; align-items: center; justify-content: center;">
+    <div style="width: 90%; max-width: 800px; height: 80%; background: #fff; border-radius: 16px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); display: flex; flex-direction: column; overflow: hidden;">
+      <!-- 弹窗头部 -->
+      <div style="background: linear-gradient(135deg, #db0011 0%, #ff4757 100%); color: #fff; padding: 20px; display: flex; align-items: center; justify-content: space-between;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <span style="font-size: 28px;">🧠</span>
+          <div>
+            <h3 style="margin: 0; font-size: 33px; font-weight: 600;">Financial Assistant</h3>
+            <p style="margin: 0; font-size: 24px; opacity: 0.9;">Ask me anything about your portfolio or market trends!</p>
+          </div>
+        </div>
+        <button id="closeChatModal" onclick="document.getElementById('qwenChatModal').style.display='none'" style="background: none; border: none; color: #fff; font-size: 42px; cursor: pointer; padding: 5px; border-radius: 50%; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='none'">×</button>
+      </div>
+      
+      <!-- 聊天消息区域（复制Financial Assistant的样式） -->
+      <div id="chatMessages" style="flex:1; overflow-y:auto; border:1px solid #e5e7eb; border-radius:12px; padding:16px; background:#f8fafc; margin:16px; margin-bottom:0; font-size:21px; line-height:1.5;">
+        <div style="text-align:center; padding:20px; color:#9ca3af;">
+          <div style="margin-bottom:8px; font-size:36px;">💬</div>
+          <div style="font-size:24px;">Ask me anything about your portfolio or market trends!</div>
+        </div>
+      </div>
+      
+      <!-- 输入区域（复制Financial Assistant的样式） -->
+      <div style="padding: 16px; background: #fff; border-top: 1px solid #e5e7eb;">
+        <div style="display:flex; gap:12px; align-items:flex-end;">
+          <textarea id="chatInput" placeholder="Ask about your portfolio, market trends, or get investment advice..." 
+            style="flex:1; padding:12px 16px; border:2px solid #e5e7eb; border-radius:12px; resize:none; font-size:21px; font-family:inherit; line-height:1.4; min-height:66px; max-height:120px; transition:border-color 0.2s; outline:none;"
+            onkeydown="handleChatKeydown(event)"
+            onfocus="this.style.borderColor='#3b82f6'"
+            onblur="this.style.borderColor='#e5e7eb'"></textarea>
+          <button id="sendChatBtn" onclick="sendChatMessage()" 
+            style="padding:12px 20px; background:#3b82f6; color:white; border:none; border-radius:12px; font-weight:600; cursor:pointer; transition:background 0.2s; white-space:nowrap; height:44px;"
+            onmouseover="this.style.background='#2563eb'"
+            onmouseout="this.style.background='#3b82f6'">
+            Send
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <div class="dashboard-container">
     <header class="dashboard-header">
@@ -1098,6 +1123,123 @@
           });
         }
         
+        // 创建Performance页面
+        function createPerformancePage() {
+          let performanceWrapper = document.getElementById('performanceWrapper');
+          if (!performanceWrapper) {
+            performanceWrapper = document.createElement('div');
+            performanceWrapper.id = 'performanceWrapper';
+            performanceWrapper.style.display = 'none';
+            performanceWrapper.style.width = '100%';
+            performanceWrapper.style.height = '100vh';
+            performanceWrapper.style.padding = '0';
+            performanceWrapper.style.boxSizing = 'border-box';
+            performanceWrapper.style.background = 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)';
+            
+            performanceWrapper.innerHTML = `
+              <!-- Performance主内容区域 -->
+              <div style="width: 100%; height: 100vh; display: flex; flex-direction: column; padding-top: 80px;">
+              <!-- Performance专用的Total值区域，与FINSIGHT平行，距离400px -->
+              <div style="position: absolute; top: 90px; left: 1550px; display: flex; align-items: flex-start; gap: 20px; z-index: 100;">
+                <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode" style="background: #fff; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px 12px; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; transition: all 0.2s; box-shadow: 0 2px 8px rgba(0,0,0,0.06); min-width: 40px; justify-content: center;">
+                  <i class="fas fa-eye-slash" style="font-size: 16px; color: #666;"></i>
+                </button>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <div class="portfolio-value" id="portfolioValue" style="font-size: 1.6rem; font-weight: 900; color: #1a233a; background: #fff; border-radius: 8px; padding: 12px 20px; min-width: 200px; text-align: center; visibility: hidden;">Total: ****</div>
+                  <div class="portfolio-gain" id="portfolioGain" style="font-size: 1.2rem; font-weight: 700; color: #22c55e; background: #fff; border-radius: 8px; padding: 12px 20px; min-width: 200px; text-align: center; visibility: hidden;">+ $**** (+*.**%)</div>
+                </div>
+              </div>                <!-- Performance主内容区域 -->
+                <main style="flex: 1; width: 100%; display: flex; align-items: flex-start; justify-content: center; padding: 0 32px 32px 32px;">
+                  <!-- 田字格 2x2 主界面布局 -->
+                  <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:20px; width:100%; height:800px;">
+                    <!-- 左上: Portfolio Chart -->
+                    <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; display:flex; flex-direction:column; width:76%;">
+                      <!-- 标题 -->
+                      <div style="margin-bottom:16px;">
+                        <h3 style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Portfolio Performance</h3>
+                      </div>
+                      <div class="range-toggle" style="display: flex; gap: 8px; margin-bottom: 16px;">
+                        <button class="toggle-btn active" data-range="7d" data-chart="portfolio" style="background: #db0011; color: #fff; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.98rem; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s;">7 Days</button>
+                        <button class="toggle-btn" data-range="1m" data-chart="portfolio" style="background: #f3f4f6; color: #222; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.98rem; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s;">1 Month</button>
+                        <button class="toggle-btn" data-range="6m" data-chart="portfolio" style="background: #f3f4f6; color: #222; border: none; border-radius: 6px; padding: 6px 16px; font-size: 0.98rem; font-weight: 500; cursor: pointer; transition: background 0.2s, color 0.2s;">6 Months</button>
+                      </div>
+                      <div style="flex:1; width:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
+                        <div class="dashboard-content" id="dashboardContent" style="width:100%;">
+                          <div id="allocationSection" style="display:none; width:100%;"></div>
+                          <canvas id="portfolioChart" style="width: 100% !important; height: 100% !important; max-width: 100%; margin: 0; box-sizing: border-box;"></canvas>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 右上: Allocation Pie Chart -->
+                    <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; flex-direction:column; width:100%; margin-left:-15%; padding:20px;">
+                      <!-- 标题 -->
+                      <div style="margin-bottom:16px;">
+                        <h3 style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Asset Allocation</h3>
+                      </div>
+                      <div style="display:flex; align-items:center; justify-content:flex-start; width:100%; flex:1;">
+                        <canvas id="allocationChart" style="max-width:351px; max-height:351px;"></canvas>
+                        <div id="allocationLegend" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-left:10px; gap:14px;">
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#006560; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(0,101,96,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Cash</span></div>
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#5b7d79; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(91,125,121,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Stock</span></div>
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#c1b89a; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(193,184,154,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Bond</span></div>
+                          <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#e9e9e8; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(233,233,232,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Other</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- 左下: Selected Asset Chart -->
+                    <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; display:flex; flex-direction:column; width:76%; height:100%; overflow:hidden;">
+                      <!-- 动态标题 -->
+                      <div style="margin-bottom:16px;">
+                        <h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Performance</h3>
+                      </div>
+                      <div style="width:100%; flex:1; position:relative;">
+                        <canvas id="selectedAssetChart" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+                      </div>
+                    </div>
+                    
+                    <!-- 右下: Featured Stocks -->
+                    <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; overflow:hidden; margin-left:-15%;">
+                      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
+                        <div class="featured-title" style="margin-bottom:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Featured Stocks</div>
+                        <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
+                          <input class="add-stock-input" id="stockInput" type="text" placeholder="Symbol" maxlength="16" required style="width:70px; padding:4px 8px; font-size:14px; border: 1px solid #e5e7eb; border-radius: 6px;" />
+                          <button class="add-stock-btn" id="addBtn" type="submit" style="width:44px; font-size:14px; padding:4px 0; background: #db0011; color: #fff; border: none; border-radius: 6px; cursor: pointer;">Add</button>
+                        </form>
+                      </div>
+                      <div class="featured-list" id="featuredList"></div>
+                      <div class="error-msg" id="errorMsg" style="margin-bottom:0; color: #ef4444; font-size: 14px;"></div>
+                    </div>
+                  </div>
+                </main>
+              </div>
+            `;
+            
+            document.querySelector('.dashboard-container').appendChild(performanceWrapper);
+            
+            // 为Performance页面的toggle按钮添加事件监听器
+            setTimeout(() => {
+              const performanceToggleBtns = performanceWrapper.querySelectorAll('.toggle-btn');
+              performanceToggleBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                  // 移除其他按钮的active类
+                  performanceToggleBtns.forEach(b => {
+                    b.style.background = '#f3f4f6';
+                    b.style.color = '#222';
+                    b.classList.remove('active');
+                  });
+                  // 添加当前按钮的active类
+                  this.style.background = '#db0011';
+                  this.style.color = '#fff';
+                  this.classList.add('active');
+                });
+              });
+            }, 100);
+          }
+          return performanceWrapper;
+        }
+        
         // 创建Market页面
         function createMarketPage() {
           let marketWrapper = document.getElementById('marketWrapper');
@@ -1174,16 +1316,19 @@
                   </div>
                 </div>
                 
-                <!-- 右侧 3/10 区域：推荐买卖建议 (高度1.5倍) -->
-                <div style="flex:3; height:780px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
-                  <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
-                    💡 <span>Trading Recommendations</span>
-                  </h3>
-                  <div id="tradingRecommendations" style="height:700px; overflow-y:auto; padding-right:8px;">
-                    <div id="recommendationsData" style="display:flex; flex-direction:column; gap:16px;">
-                      <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
-                        <div style="margin-bottom:12px;">🤖</div>
-                        Loading recommendations...
+                <!-- 右侧 3/10 区域：推荐买卖建议和金融助手 -->
+                <div style="flex:3; height:780px; display:flex; flex-direction:column; gap:20px;">
+                  <!-- Trading Recommendations - 调整为占满整个右侧区域 -->
+                  <div style="height:780px; background:#fff; border-radius:16px; box-shadow:0 8px 32px rgba(0,0,0,0.08); padding:24px; border:1px solid #e5e7eb;">
+                    <h3 style="font-size:20px; font-weight:700; color:#1a233a; margin:0 0 20px 0; display:flex; align-items:center; gap:8px;">
+                      💡 <span>Trading Recommendations</span>
+                    </h3>
+                    <div id="tradingRecommendations" style="height:700px; overflow-y:auto; padding-right:8px;">
+                      <div id="recommendationsData" style="display:flex; flex-direction:column; gap:16px;">
+                        <div style="text-align:center; padding:60px 20px; color:#9ca3af; font-size:16px;">
+                          <div style="margin-bottom:12px;">🤖</div>
+                          Loading recommendations...
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1196,33 +1341,64 @@
           return marketWrapper;
         }
         function setTab(tab) {
+          const performanceWrapper = document.getElementById('performanceWrapper');
+          const manageWrapper = document.getElementById('manageWrapper');
           const marketWrapper = document.getElementById('marketWrapper');
           
-          if (tab === 'performance') {
-            perfBtn.classList.add('active');
+          // 更新全局导航按钮状态
+          function updateGlobalNavButtons(activeTab) {
+            perfBtn.classList.remove('active');
             manageBtn.classList.remove('active');
             marketBtn.classList.remove('active');
-            if (dashboardMain) dashboardMain.style.display = '';
-            if (headerRight) headerRight.style.display = '';
-            const manageWrapper = document.getElementById('manageWrapper');
+            
+            if (activeTab === 'performance') perfBtn.classList.add('active');
+            if (activeTab === 'manage') manageBtn.classList.add('active');
+            if (activeTab === 'market') marketBtn.classList.add('active');
+          }
+          
+          if (tab === 'performance') {
+            updateGlobalNavButtons('performance');
+            
+            // 隐藏原始的dashboard-main和header-right
+            if (dashboardMain) dashboardMain.style.display = 'none';
+            if (headerRight) headerRight.style.display = 'none';
+            
+            // 隐藏其他Tab
             if (manageWrapper) manageWrapper.style.display = 'none';
             if (marketWrapper) marketWrapper.style.display = 'none';
+            
+            // 创建并显示Performance页面
+            const performance = createPerformancePage();
+            performance.style.display = 'block';
+            
+            // 延迟加载Performance相关的功能，确保DOM元素已创建
+            setTimeout(() => {
+              initializePerformancePage();
+            }, 100);
+            
           } else if (tab === 'manage') {
-            perfBtn.classList.remove('active');
-            manageBtn.classList.add('active');
-            marketBtn.classList.remove('active');
+            updateGlobalNavButtons('manage');
+            
+            // 隐藏原始元素
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            const manageWrapper = document.getElementById('manageWrapper');
-            if (manageWrapper) manageWrapper.style.display = 'flex';
+            
+            // 隐藏其他Tab
+            if (performanceWrapper) performanceWrapper.style.display = 'none';
             if (marketWrapper) marketWrapper.style.display = 'none';
+            
+            // 显示Manage页面
+            if (manageWrapper) manageWrapper.style.display = 'flex';
+            
           } else if (tab === 'market') {
-            perfBtn.classList.remove('active');
-            manageBtn.classList.remove('active');
-            marketBtn.classList.add('active');
+            updateGlobalNavButtons('market');
+            
+            // 隐藏原始元素
             if (dashboardMain) dashboardMain.style.display = 'none';
             if (headerRight) headerRight.style.display = 'none';
-            const manageWrapper = document.getElementById('manageWrapper');
+            
+            // 隐藏其他Tab
+            if (performanceWrapper) performanceWrapper.style.display = 'none';
             if (manageWrapper) manageWrapper.style.display = 'none';
             
             // 创建并显示Market页面
@@ -1242,78 +1418,69 @@
         marketBtn.addEventListener('click', function() {
           setTab('market');
         });
+        
+        // 初始化Performance页面的功能
+        function initializePerformancePage() {
+          // 重新初始化图表和功能
+          if (typeof loadPerformanceData === 'function') {
+            loadPerformanceData();
+          }
+          
+          // 强制图表重新计算尺寸以适应容器
+          setTimeout(() => {
+            if (window.chart && typeof window.chart.resize === 'function') {
+              window.chart.resize();
+            }
+            // 如果有其他图表实例也需要resize
+            if (window.allocationChart && typeof window.allocationChart.resize === 'function') {
+              window.allocationChart.resize();
+            }
+            if (window.selectedAssetChart && typeof window.selectedAssetChart.resize === 'function') {
+              window.selectedAssetChart.resize();
+            }
+          }, 200);
+          
+          // 重新初始化隐私切换功能
+          const privacyToggle = document.getElementById('privacyToggle');
+          if (privacyToggle) {
+            privacyToggle.addEventListener('click', function() {
+              if (typeof togglePrivacy === 'function') {
+                togglePrivacy();
+              }
+            });
+          }
+          
+          // 重新初始化Featured Stocks功能
+          const addStockForm = document.getElementById('addStockForm');
+          if (addStockForm) {
+            addStockForm.addEventListener('submit', function(e) {
+              e.preventDefault();
+              const stockInput = document.getElementById('stockInput');
+              if (stockInput && typeof addFeaturedStock === 'function') {
+                addFeaturedStock(stockInput.value.trim().toUpperCase());
+                stockInput.value = '';
+              }
+            });
+          }
+        }
+        
         setTab('performance');
       });
     </script>
         </div>
       </div>
-      <div class="header-right">
-        <button class="privacy-toggle" id="privacyToggle" title="Toggle Privacy Mode">
+      <div class="header-right" style="display: none;">
+        <!-- 原header-right内容现在集成到Performance页面中 -->
+        <button class="privacy-toggle" id="privacyToggleOld" title="Toggle Privacy Mode">
           <span class="privacy-icon">👁️‍🗨️</span>
         </button>
-        <div class="portfolio-value" id="portfolioValue">Total: ****</div>
-        <div class="portfolio-gain" id="portfolioGain">+ $**** (+*.**%)</div>
-        
+        <div class="portfolio-value" id="portfolioValueOld">Total: ****</div>
+        <div class="portfolio-gain" id="portfolioGainOld">+ $**** (+*.**%)</div>
       </div>
     </header>
-    <main class="dashboard-main">
-      <!-- 田字格 2x2 主界面布局 -->
-      <div style="display:grid; grid-template-columns:3fr 2fr; grid-template-rows:1fr 1fr; gap:32px; width:100%; height:800px; margin-top:16px;">
-        <!-- 6:4分布，左侧更宽 -->
-        <div style="grid-column:1/2; grid-row:1/2; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
-          <div class="range-toggle">
-            <button class="toggle-btn active" data-range="7d" data-chart="portfolio">7 Days</button>
-            <button class="toggle-btn" data-range="1m" data-chart="portfolio">1 Month</button>
-            <button class="toggle-btn" data-range="6m" data-chart="portfolio">6 Months</button>
-          </div>
-          <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <!-- dashboard-nav已移至header-left -->
-            <div class="dashboard-content" id="dashboardContent" style="width:100%;">
-              <div id="allocationSection" style="display:none; width:100%;">
-                <!-- Pie chart removed from here -->
-              </div>
-              <canvas id="portfolioChart"></canvas>
-            </div>
-          </div>
-        </div>
-        <!-- Top Right: Allocation Pie Chart -->
-        <div style="grid-column:2/3; grid-row:1/2; background:#ffffff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; align-items:flex-start; justify-content:flex-start; width:100%;">
-          <div style="display:flex; align-items:center; justify-content:flex-start; width:85%; height:100%; margin-left:2px;">
-            <canvas id="allocationChart" style="max-width:351px; max-height:351px;"></canvas>
-            <div id="allocationLegend" style="display:flex; flex-direction:column; justify-content:center; align-items:flex-start; margin-left:10px; gap:14px; ">
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#006560; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(0,101,96,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Cash</span></div>
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#5b7d79; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(91,125,121,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Stock</span></div>
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#c1b89a; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(193,184,154,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Bond</span></div>
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:2px;"><span style="display:inline-block; width:18px; height:18px; background:#e9e9e8; border-radius:6px; margin-right:10px; box-shadow:0 1px 4px rgba(233,233,232,0.12);"></span><span style="font-size:19px; font-family:'Montserrat','Roboto Mono','Consolas',sans-serif; font-weight:600; letter-spacing:1.2px; color:#1a233a;">Other</span></div>
-            </div>
-          </div>
-        </div>
-        <!-- Bottom Left: 空 -->
-        <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; width:95%;">
-          <!-- <div class="range-toggle">
-            <button class="toggle-btn active" data-range="7d" data-chart="selectedAsset">7 Days</button>
-            <button class="toggle-btn" data-range="1m" data-chart="selectedAsset">1 Month</button>
-            <button class="toggle-btn" data-range="6m" data-chart="selectedAsset">6 Months</button>
-          </div> -->
-          <div style="width:100%; height:100%; display:flex; flex-direction:column; justify-content:center; align-items:center;">
-            <div class="dashboard-content",id="", style="width:100%;">
-              <canvas id="selectedAssetChart"></canvas>
-            </div>
-          </div>
-        </div>
-        <!-- Bottom Right: Featured Stocks -->
-        <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;">
-            <div class="featured-title" style="margin-bottom:0;">Featured Stocks</div>
-            <form class="add-stock-form" id="addStockForm" style="display:flex; gap:6px; align-items:center; min-width:170px;">
-              <input class="add-stock-input" id="stockInput" type="text" placeholder="Symbol" maxlength="16" required style="width:70px; padding:4px 8px; font-size:14px;" />
-              <button class="add-stock-btn" id="addBtn" type="submit" style="width:44px; font-size:14px; padding:4px 0;">Add</button>
-            </form>
-          </div>
-          <div class="featured-list" id="featuredList"></div>
-          <div class="error-msg" id="errorMsg" style="margin-bottom:0;"></div>
-        </div>
-      </div>
+    <!-- 原始的dashboard-main现在被隐藏，由动态创建的performanceWrapper替代 -->
+    <main class="dashboard-main" style="display: none;">
+      <!-- 原Performance内容已迁移到createPerformancePage()函数中 -->
     </main>
   </div>
   <script src="script-api.js"></script>
@@ -2126,6 +2293,177 @@ async function updateSelectedAssetChart(assetType, range) { // 添加 async 关�
         }
       ];
     }
+
+    // 聊天功能
+    function handleChatKeydown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendChatMessage();
+      }
+    }
+
+    function addChatMessage(content, isUser = false) {
+      const chatMessages = document.getElementById('chatMessages');
+      const messageDiv = document.createElement('div');
+      messageDiv.style.cssText = `
+        margin-bottom: 16px;
+        padding: 182x 216x;
+        border-radius: 12px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.4;
+        ${isUser ? 
+          'background: #3b82f6; color: white; margin-left: auto; text-align: right;' : 
+          'background: white; color: #374151; border: 1px solid #e5e7eb; margin-right: auto;'
+        }
+      `;
+      
+      if (!isUser) {
+        // AI assistant message with icon
+        messageDiv.innerHTML = `
+          <div style="display: flex; align-items: flex-start; gap: 18x;">
+            <div style="font-size: 316x; margin-top: 2px;">🧠</div>
+            <div style="flex: 2p">${content}</div>
+          </div>
+        `;
+      } else {
+        // User message
+        messageDiv.textContent = content;
+      }
+      
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+      const chatInput = document.getElementById('chatInput');
+      const sendBtn = document.getElementById('sendChatBtn');
+      const message = chatInput.value.trim();
+      
+      if (!message) return;
+      
+      // Disable input and button
+      chatInput.disabled = true;
+      sendBtn.disabled = true;
+      sendBtn.textContent = 'Sending...';
+      
+      // Add user message
+      addChatMessage(message, true);
+      chatInput.value = '';
+      
+      try {
+        const response = await fetch('http://localhost:3000/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ message })
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          addChatMessage(data.response);
+        } else {
+          addChatMessage('抱歉，我现在无法处理您的请求。请稍后再试。');
+        }
+      } catch (error) {
+        console.error('Chat error:', error);
+        addChatMessage('连接出现问题，请检查网络连接或稍后再试。');
+      } finally {
+        // Re-enable input and button
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+        sendBtn.textContent = 'Send';
+        chatInput.focus();
+      }
+    }
+
+    // 增强的Markdown渲染函数
+    function renderMarkdown(text) {
+      if (!text) return '';
+      
+      // 预处理：确保文本干净
+      let processed = text.toString().trim();
+      
+      return processed
+        // 首先处理代码块（避免内部内容被其他规则影响）
+        .replace(/```([\s\S]*?)```/g, '<pre style="background:#f8fafc; padding:12px; border-radius:8px; border-left:4px solid #db0011; margin:12px 0; overflow-x:auto; font-family:monospace; font-size:13px; line-height:1.4;"><code>$1</code></pre>')
+        
+        // 标题渲染（按从长到短的顺序，避免冲突）
+        .replace(/#### (.*$)/gim, '<h4 style="color:#1a233a; font-weight:600; margin:14px 0 6px 0; font-size:15px; border-bottom:1px solid #e5e7eb; padding-bottom:4px;">$1</h4>')
+        .replace(/### (.*$)/gim, '<h3 style="color:#1a233a; font-weight:600; margin:16px 0 8px 0; font-size:16px; border-bottom:1px solid #e5e7eb; padding-bottom:4px;">$1</h3>')
+        .replace(/## (.*$)/gim, '<h2 style="color:#1a233a; font-weight:700; margin:20px 0 10px 0; font-size:18px; border-bottom:2px solid #db0011; padding-bottom:6px;">$1</h2>')
+        .replace(/# (.*$)/gim, '<h1 style="color:#1a233a; font-weight:700; margin:24px 0 12px 0; font-size:20px; border-bottom:2px solid #db0011; padding-bottom:8px;">$1</h1>')
+        
+        // 粗体和斜体（支持更多格式）
+        .replace(/\*\*\*(.*?)\*\*\*/g, '<strong style="font-weight:700; font-style:italic; color:#1a233a;">$1</strong>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong style="font-weight:600; color:#1a233a;">$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em style="font-style:italic; color:#374151;">$1</em>')
+        
+        // 有序列表（保持数字）
+        .replace(/^(\s*)(\d+)\.\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:24px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">$2.</span>$3</div>')
+        
+        // 无序列表
+        .replace(/^(\s*)[-*+]\s+(.*)$/gim, '<div style="margin:4px 0; padding-left:20px; position:relative;"><span style="position:absolute; left:0; color:#db0011; font-weight:600;">•</span>$2</div>')
+        
+        // 行内代码
+        .replace(/`([^`]+)`/g, '<code style="background:#f1f5f9; padding:3px 6px; border-radius:4px; font-family:monospace; font-size:13px; color:#db0011; border:1px solid #e5e7eb;">$1</code>')
+        
+        // 链接
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:#3b82f6; text-decoration:underline;" target="_blank">$1</a>')
+        
+        // 分隔线
+        .replace(/^---+$/gm, '<hr style="border:none; border-top:2px solid #e5e7eb; margin:20px 0;">')
+        
+        // 引用块
+        .replace(/^>\s+(.*)$/gim, '<blockquote style="border-left:4px solid #db0011; padding-left:16px; margin:12px 0; color:#6b7280; font-style:italic; background:#f8fafc; padding:12px 16px; border-radius:0 8px 8px 0;">$1</blockquote>')
+        
+        // 换行处理（最后处理）
+        .replace(/\n\n/g, '<br><br>')
+        .replace(/\n/g, '<br>');
+    }
+
+    // 修改添加聊天消息的函数以支持Markdown渲染
+    function addChatMessage(message, isUser = false) {
+      const chatMessages = document.getElementById('chatMessages');
+      if (!chatMessages) return;
+
+      // 移除欢迎消息
+      const welcomeMessage = chatMessages.querySelector('div[style*="text-align:center"]');
+      if (welcomeMessage) {
+        welcomeMessage.remove();
+      }
+
+      const messageDiv = document.createElement('div');
+      messageDiv.style.cssText = `
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        max-width: 85%;
+        word-wrap: break-word;
+        line-height: 1.5;
+        ${isUser 
+          ? 'background: #3b82f6; color: white; margin-left: auto; text-align: right;' 
+          : 'background: #f8fafc; color: #374151; margin-right: auto; border: 1px solid #e5e7eb;'
+        }
+      `;
+
+      if (isUser) {
+        messageDiv.textContent = message;
+      } else {
+        // 对AI回复进行Markdown渲染
+        messageDiv.innerHTML = renderMarkdown(message);
+      }
+
+      chatMessages.appendChild(messageDiv);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
   </script>
 </body>
 </html>
