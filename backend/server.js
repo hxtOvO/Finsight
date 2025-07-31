@@ -2474,19 +2474,6 @@ app.get('/api/assets/:assetType/performance/:range', async (req, res) => {
   }
 });
 
-// Start server
-app.listen(PORT, async () => {
-  console.log(`🚀 FinSight Backend running on http://localhost:${PORT}`);
-
-  try {
-    await initDatabase(); // 确保数据库表建好
-    await preloadRecommendationCache(); // 预加载推荐数据
-    console.log('✅ Recommendation cache preloaded');
-  } catch (err) {
-    console.error('❌ Failed to preload recommendation data:', err.message);
-  }
-});
-
 // Graceful shutdown
 process.on('SIGINT', async () => {
   if (db) {
