@@ -327,21 +327,24 @@ async function updateChart(range = '7d') {
             }
         });
   } else {
-    // 隐私模式下所有区间y轴刻度为白色，否则为深色
-    chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
-    
-    // 重新创建gradient以适应可能变化的canvas尺寸
-    const ctx = document.getElementById('portfolioChart').getContext('2d');
-    const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
-    gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
-    gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
-    gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
-    
-    chart.data.labels = labels;
-    chart.data.datasets[0].data = values;
-    chart.data.datasets[0].backgroundColor = gradient; // 更新gradient
-    chart.update('active');
-  }
+      // 隐私模式下所有区间y轴刻度为白色，否则为深色
+      chart.options.scales.y.ticks.color = isPrivacyMode ? '#fff' : '#222';
+
+      // 重新创建gradient以适应可能变化的canvas尺寸
+      const ctx = document.getElementById('portfolioChart').getContext('2d');
+      const gradient = ctx.createLinearGradient(0, 0, 0, ctx.canvas.height);
+      gradient.addColorStop(0, 'rgba(219,0,17,0.32)');
+      gradient.addColorStop(0.5, 'rgba(219,0,17,0.12)');
+      gradient.addColorStop(1, 'rgba(219,0,17,0.01)');
+
+      chart.data.labels = labels;
+      chart.data.datasets[0].data = values;
+      chart.data.datasets[0].backgroundColor = gradient; // 更新gradient
+      // 确保在更新时也明确设置 pointRadius 和 pointHoverRadius
+      chart.data.datasets[0].pointRadius = 0; // 添加这行
+      chart.data.datasets[0].pointHoverRadius = 0; // 添加这行 (如果希望悬停时也无点)
+      chart.update('active');
+    }
 }
 
 async function updatePortfolioHeader(range = '7d') {
@@ -757,7 +760,7 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
           borderColor: borderColor,
           backgroundColor: gradient,
           pointRadius: 0,
-          pointHoverRadius: 6,
+          pointHoverRadius: 0,
           pointBackgroundColor: '#fff',
           pointBorderColor: borderColor,
           borderWidth: 2,
@@ -856,12 +859,13 @@ async function updateSelectedAssetChart(assetType, range = '7d') {
         labelColor = 'Portfolio';
     }
     
-    selectedAssetChart.data.labels = labels;
-    selectedAssetChart.data.datasets[0].data = values;
-    selectedAssetChart.data.datasets[0].backgroundColor = gradient;
-    selectedAssetChart.data.datasets[0].borderColor = borderColor;
-    selectedAssetChart.data.datasets[0].label = `${labelColor} Performance`;
-    selectedAssetChart.update('active');
+    electedAssetChart.data.datasets[0].data = values;
+        selectedAssetChart.data.datasets[0].backgroundColor = gradient;
+        selectedAssetChart.data.datasets[0].borderColor = borderColor;
+        selectedAssetChart.data.datasets[0].label = `${labelColor} Performance`;
+        selectedAssetChart.data.datasets[0].pointRadius = 0; // 确保更新时也设置
+        selectedAssetChart.data.datasets[0].pointHoverRadius = 0; // 确保更新时也设置
+        selectedAssetChart.update('active')
   }
 }
 
