@@ -270,6 +270,72 @@
       }
     }
   </style>
+  <script>
+    // 全局函数：刷新Asset Activity History
+    window.loadActivityHistory = async function() {
+      try {
+        const res = await fetch('/api/asset/history');
+        const data = await res.json();
+        const container = document.querySelector('#activityContainer');
+        if (!container) {
+          console.warn('Activity container not found');
+          return;
+        }
+        
+        if (!Array.isArray(data) || data.length === 0) {
+          container.innerHTML = `<p style="color:#6b7280;">No activity found.</p>`;
+        } else {
+          // 渲染函数
+          const formatDate = (str) => {
+            const d = new Date(str);
+            return d.toISOString().split('T')[0];
+          };
+          
+          const formatAmount = (operationType, amount) => {
+            const prefix = (operationType === 'add' || operationType === 'buy') ? '+' : '-';
+            return `${prefix}$${Math.abs(amount).toFixed(2)}`;
+          };
+          
+          const getOperationDisplay = (operationType, assetType) => {
+            const isPositive = operationType === 'add' || operationType === 'buy';
+            return {
+              icon: isPositive ? '⬆️' : '⬇️',
+              label: operationType.charAt(0).toUpperCase() + operationType.slice(1),
+              color: isPositive ? '#16a34a' : '#dc2626',
+              bg: isPositive ? '#dcfce7' : '#fef2f2'
+            };
+          };
+          
+          const renderItem = (item) => {
+            const op = getOperationDisplay(item.operation_type, item.asset_type);
+            return `
+              <div style="width:91%; padding:20px; border-bottom:2px solid #f1f5f9; font-size:14px; color:#374151; background:#ffffff; border-radius:8px; margin-bottom:12px; transition:all 0.2s; box-shadow:0 2px 8px rgba(0,0,0,0.02);"
+                onmouseover="this.style.background='#f8fafc'; this.style.transform='translateY(-1px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'"
+                onmouseout="this.style.background='#ffffff'; this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.02)'">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                  <div style="display:flex; align-items:center; gap:20px;">
+                    <span style="font-weight:600;">📅 ${formatDate(item.operation_date)}</span>
+                    <span style="color:${op.color}; font-weight:700; background:${op.bg}; padding:4px 12px; border-radius:20px; font-size:12px;">${op.icon} ${op.label}</span>
+                    <span style="color:${op.color}; font-weight:700; font-size:15px;">💰 ${formatAmount(item.operation_type, item.amount)}</span>
+                    <span style="font-weight:600;">🏷️ ${item.asset_type}</span>
+                  </div>
+                </div>
+                <div style="color:#6b7280; font-size:13px; padding-left:4px;">📝 ${item.description || 'No description'}</div>
+              </div>
+            `;
+          };
+          
+          container.innerHTML = data.map(renderItem).join('');
+        }
+      } catch (err) {
+        console.error('❌ Failed to load activity history:', err);
+        const container = document.querySelector('#activityContainer');
+        if (container) {
+          container.innerHTML = `<p style="color:red;">Failed to load data.</p>`;
+        }
+      }
+    };
+  </script>
 </head>
 
 <body>
@@ -514,6 +580,11 @@
                           const data = await response.json();
                           console.log('API response:', data);
                           alert(`Cash ${operation === 'in' ? 'added' : 'withdrawn'} of $${amount} confirmed!`);
+                          
+                          // 刷新Asset Activity History
+                          if (window.loadActivityHistory) {
+                            window.loadActivityHistory();
+                          }
                         } catch (error) {
                           console.error('Error:', error);
                           alert(`An error occurred: ${error.message}`);
@@ -622,6 +693,11 @@
                           const data = await response.json();
                           console.log('API response:', data);
                           alert(`Stock ${operation} of ${quantity} shares of ${symbol} confirmed!`);
+                          
+                          // 刷新Asset Activity History
+                          if (window.loadActivityHistory) {
+                            window.loadActivityHistory();
+                          }
                         } catch (error) {
                           console.error('Error:', error);
                           alert(`An error occurred: ${error.message}`);
@@ -765,6 +841,11 @@
                           const result = await response.json();
                           alert(`Bond ${operation === 'buy' ? 'purchased' : 'sold'} successfully! Total portfolio: $${result.totalPortfolio.toFixed(2)}`);
 
+                          // 刷新Asset Activity History
+                          if (window.loadActivityHistory) {
+                            window.loadActivityHistory();
+                          }
+
                           // 重置表单
                           bondCodeInput.value = '';
                           bondAmountInput.value = '';
@@ -884,6 +965,11 @@
                           // 显示成功消息
                           const assetType = assetDescription ? ` (${assetDescription})` : '';
                           alert(`Other asset ${operation} of $${amount}${assetType} confirmed!`);
+
+                          // 刷新Asset Activity History
+                          if (window.loadActivityHistory) {
+                            window.loadActivityHistory();
+                          }
 
                           // 更新资产列表或执行其他操作
                           updateAssetList();

@@ -53,19 +53,19 @@ async function generateAssetHistoryData() {
     console.log('✅ 现有数据已清空');
 
     // 初始值设定
-    let currentCash = 3000;
-    let currentStock = 20000; // 初始股票价值在10000-30000中间
+    let currentCash = 8000;  // 调整初始现金，便于过渡到最终15400
+    let currentStock = 25000; // 调整初始股票价值，便于过渡到最终34915
     const baseBond = 35000;
     const baseOther = 350000;
 
-    console.log('📊 开始生成180天历史数据...');
+        console.log('⚡ 开始生成181天历史数据 (2024-12-02 到 2025-07-31)...');
     console.log(`💰 初始值: Cash=${currentCash}, Stock=${currentStock}, Bond=${baseBond}, Other=${baseOther}`);
 
-    const endDate = new Date('2025-07-30'); // 改为7-30作为最新日期
+    const endDate = new Date('2025-07-31'); // 改为7-31作为最新日期
     const dataToInsert = [];
 
-    // 生成180天数据（从180天前到2025-07-30）
-    for (let i = 179; i >= 0; i--) {
+    // 生成181天数据（从180天前到2025-07-31，共181天）
+    for (let i = 180; i >= 0; i--) {
       const date = new Date(endDate);
       date.setDate(endDate.getDate() - i);
       const dateStr = date.toISOString().split('T')[0];
@@ -105,9 +105,11 @@ async function generateAssetHistoryData() {
       }
 
       currentCash += cashChange;
-      // 确保现金不为负数
-      if (currentCash < 0) {
-        currentCash = randomBetween(500, 1500);
+      // 确保现金在合理范围内（以15400为中值上下波动）
+      if (currentCash < 5000) {
+        currentCash = randomBetween(8000, 12000);
+      } else if (currentCash > 25000) {
+        currentCash = randomBetween(12000, 18000);
       }
 
       // === 股票逻辑 ===
@@ -132,16 +134,25 @@ async function generateAssetHistoryData() {
       stockChange += marketVolatility;
 
       currentStock += stockChange;
-      // 确保股票价值在合理范围内
+      // 确保股票价值在合理范围内（调整上限以适应最终34915的目标）
       if (currentStock < 10000) {
         currentStock = randomBetween(10000, 15000);
-      } else if (currentStock > 30000) {
-        currentStock = randomBetween(25000, 30000);
+      } else if (currentStock > 40000) {
+        currentStock = randomBetween(32000, 38000);
       }
 
       // === 债券和其他资产（基本不变，小幅波动） ===
-      const bondValue = baseBond + randomBetween(-500, 500);
-      const otherValue = baseOther + randomBetween(-2000, 2000);
+      let bondValue = baseBond + randomBetween(-500, 500);
+      let otherValue = baseOther + randomBetween(-2000, 2000);
+
+      // 特殊处理：如果是2025-07-31，设置指定的资产值
+      if (dateStr === '2025-07-31') {
+        console.log('🎯 设置2025-07-31的指定资产值');
+        currentCash = 15400;  // 修改为15400
+        currentStock = 34915;  // 修改为34915
+        bondValue = 35000;
+        otherValue = 350000;
+      }
 
       // 四舍五入到2位小数
       const finalCash = Math.round(currentCash * 100) / 100;
@@ -152,7 +163,7 @@ async function generateAssetHistoryData() {
       dataToInsert.push([dateStr, finalCash, finalStock, finalBond, finalOther]);
 
       // 每30天显示一次进度
-      if (i % 30 === 0) {
+      if (i % 30 === 0 || dateStr === '2025-07-31') {
         const totalValue = finalCash + finalStock + finalBond + finalOther;
         console.log(`📅 ${dateStr}: 总价值=${totalValue.toFixed(0)} (Cash=${finalCash}, Stock=${finalStock}, Bond=${finalBond}, Other=${finalOther})`);
       }
@@ -168,7 +179,7 @@ async function generateAssetHistoryData() {
     }
 
     console.log('✅ 数据生成完成！');
-    console.log(`📊 总共生成了 ${dataToInsert.length} 条记录`);
+    console.log(`📊 总共生成了 ${dataToInsert.length} 条记录 (181天数据)`);
 
     // 显示最终统计
     const lastRecord = dataToInsert[dataToInsert.length - 1];
@@ -197,8 +208,8 @@ async function generateAssetHistoryData() {
 // 执行脚本
 console.log('🚀 开始生成 asset_history 表数据...');
 console.log('📋 数据规则:');
-console.log('  💰 现金: 基础3000, 月底+7000工资, 周末-500购物, 日常消费, 投资进出');
-console.log('  📊 股票: 10000-30000范围, 随机交易, 市场波动');
+console.log('  💰 现金: 基础8000, 最终15400, 月底+7000工资, 周末-500购物, 日常消费, 投资进出');
+console.log('  📊 股票: 基础25000, 最终34915, 随机交易, 市场波动');
 console.log('  🏦 债券: 35000基础, 小幅波动');
 console.log('  🏠 其他: 350000基础, 小幅波动');
 console.log('');
