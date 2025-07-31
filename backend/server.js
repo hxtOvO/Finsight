@@ -448,13 +448,12 @@ async function chatWithQwen(userMessage, financialContext) {
   try {
     console.log('🤖 开始调用Qwen AI...');
 
-    // 构建交易推荐信息字符串
+    // 精简版交易推荐信息
     let tradingRecommendationsText = '';
     if (financialContext.tradingRecommendations && financialContext.tradingRecommendations.length > 0) {
       tradingRecommendationsText = '\n📊 Trading Recommendations (Top 10):\n';
-      financialContext.tradingRecommendations.forEach(rec => {
-        const actionEmoji = rec.action === 'BUY' ? '🟢' : rec.action === 'SELL' ? '🔴' : '🟡';
-        tradingRecommendationsText += `- ${rec.symbol}: ${actionEmoji} ${rec.action} (Score: ${rec.score}, Confidence: ${(rec.confidence * 100).toFixed(0)}%, Analysts: ${rec.total_analysts})\n`;
+      financialContext.tradingRecommendations.forEach((rec, idx) => {
+        tradingRecommendationsText += `#${idx + 1} ${rec.symbol}: ${rec.action} | Confidence: ${(rec.confidence * 100).toFixed(0)}% | Analysts: ${rec.total_analysts}\n`;
       });
       tradingRecommendationsText += '\n';
     }
@@ -483,30 +482,43 @@ async function chatWithQwen(userMessage, financialContext) {
       portfolioTrendText += `Weekly Change: ${weeklyChange}%\n\n`;
     }
 
-    const systemPrompt = `You are FinSight's professional financial assistant with access to comprehensive portfolio and market data.
+    // 拼接 Recommend 表原始内容和系统建议
+    let recommendRawText = '';
+    if (financialContext.allRecommend && financialContext.allRecommend.length > 0) {
+      recommendRawText = '\n\nAnalyst Raw Recommendations (from DB):\n';
+      recommendRawText += financialContext.allRecommend.map(row => {
+        const strongBuy = Number(row.strong_buy) || 0;
+        const buy = Number(row.buy) || 0;
+        const hold = Number(row.hold) || 0;
+        const sell = Number(row.sell) || 0;
+        const strongSell = Number(row.strong_sell) || 0;
+        let action = 'HOLD';
+        if (strongBuy + buy > sell + strongSell) action = 'BUY';
+        else if (sell + strongSell > strongBuy + buy) action = 'SELL';
+        return `${row.symbol}: strongBuy=${strongBuy}, buy=${buy}, hold=${hold}, sell=${sell}, strongSell=${strongSell} | 系统建议: ${action}`;
+      }).join('\n');
+    }
 
-👤 User's Portfolio Summary:
+    const systemPrompt = `You are FinSight's professional financial assistant. Here is the user's key data:
+
+Portfolio:
 - Total Assets: $${financialContext.portfolio.total_value || 0}
 - Gain/Loss: $${financialContext.portfolio.gain_loss || 0} (${financialContext.portfolio.gain_loss_percent || 0}%)
 - Asset Allocation: Cash $${financialContext.assetAllocation.cash}, Stocks $${financialContext.assetAllocation.stock}, Bonds $${financialContext.assetAllocation.bond}, Other $${financialContext.assetAllocation.other}
 
-📈 User's Stock Holdings:
+Stock Holdings:
 ${financialContext.stockHoldings.map(s => `- ${s.symbol}: ${s.shares} shares @ $${s.currentPrice} (${s.changePercent}%)`).join('\n')}
-${featuredStocksText}${tradingRecommendationsText}${portfolioTrendText}
-📊 Market Summary:
-- Total Featured Stocks: ${financialContext.marketSummary?.totalFeaturedStocks || 0}
-- Total Recommendations Available: ${financialContext.marketSummary?.totalRecommendations || 0}
-- Average Recommendation Score: ${financialContext.marketSummary?.avgRecommendationScore || 0}
 
-As a professional financial advisor with access to real-time data, please:
-1. Provide specific, data-driven analysis using portfolio data, trading recommendations, and market trends
-2. Reply in the same language as the user's question (English, Chinese, or other languages)
-3. Use professional but friendly tone with relevant emojis
-4. Include risk warnings for investment advice
-5. Reference specific trading recommendations when relevant to user's questions
-6. Compare user's holdings with market recommendations when applicable
-7. Consider portfolio trends and recent performance in your analysis
-8. Provide actionable insights based on the comprehensive data available`;
+${tradingRecommendationsText}
+
+Instructions:
+- Use the above trading recommendations to answer concisely and directly.
+- For each stock: if strongBuy+buy > sell+strongSell, recommend BUY; if sell+strongSell > strongBuy+buy, recommend SELL; otherwise recommend HOLD.
+- No need for lengthy explanations; just give clear, actionable suggestions.
+- If there are no strong recommendations, say so directly.
+- Always remind about investment risks if giving advice.
+- Reply in the same language as the user's question.
+${recommendRawText}`;
 
     console.log('📤 发送请求到Qwen模型...');
     const response = await ollama.chat({
@@ -540,30 +552,30 @@ async function getFinancialDataForLLM() {
   try {
     // 获取投资组合概览
     const [portfolioData] = await db.execute('SELECT * FROM portfolio LIMIT 1');
-
     // 获取资产分配
     const [currentAssets] = await db.execute('SELECT * FROM current_assets');
-
-    // 获取关注股票（扩展获取更多信息）
+    // 获取关注股票
     const [featuredStocks] = await db.execute('SELECT symbol, price, change_percent, updated_at FROM featured_stocks ORDER BY updated_at DESC LIMIT 20');
-
-    // 获取交易推荐数据
+    // 获取交易推荐数据，合并 SYMBOL_LIST、用户持仓、featuredStocks 的 symbol
     let tradingRecommendations = [];
     try {
-      const promises = SYMBOL_LIST.map(symbol => fetchRecommendationTrend(symbol));
+      // 收集 symbol
+      const holdingSymbols = currentAssets.filter(a => a.type === 'stock' && a.symbol).map(a => a.symbol);
+      const featuredSymbols = featuredStocks.map(s => s.symbol);
+      const allSymbols = Array.from(new Set([...SYMBOL_LIST, ...holdingSymbols, ...featuredSymbols]));
+      // 批量查推荐
+      const promises = allSymbols.map(symbol => fetchRecommendationTrend(symbol));
       const results = await Promise.all(promises);
       tradingRecommendations = processRecommendationData(results);
-      console.log(`📊 获取了 ${tradingRecommendations.length} 个股票的交易推荐数据`);
+      console.log(`📊 获取了 ${tradingRecommendations.length} 个股票的交易推荐数据:`, allSymbols);
     } catch (error) {
       console.warn('获取交易推荐数据失败:', error.message);
       tradingRecommendations = [];
     }
-
     // 获取最近的资产历史数据（过去7天）
     const [recentAssetHistory] = await db.execute(
       'SELECT date, cash_value, stock_value, bond_value, other_value FROM asset_history ORDER BY date DESC LIMIT 7'
     );
-
     // 计算资产分配汇总
     const assetSummary = {
       cash: currentAssets.filter(a => a.type === 'cash').reduce((sum, a) => sum + Number(a.amount), 0),
@@ -571,7 +583,6 @@ async function getFinancialDataForLLM() {
       bond: currentAssets.filter(a => a.type === 'bond').reduce((sum, a) => sum + Number(a.amount), 0),
       other: currentAssets.filter(a => a.type === 'other').reduce((sum, a) => sum + Number(a.amount), 0)
     };
-
     // 计算股票价值
     const stockHoldings = currentAssets.filter(a => a.type === 'stock');
     if (stockHoldings.length > 0) {
@@ -580,12 +591,19 @@ async function getFinancialDataForLLM() {
         assetSummary.stock += Number(holding.amount) * Number(stockPrice);
       }
     }
-
     // 计算总价值趋势
     const portfolioTrend = recentAssetHistory.map(row => ({
       date: row.date,
       totalValue: Number(row.cash_value || 0) + Number(row.stock_value || 0) + Number(row.bond_value || 0) + Number(row.other_value || 0)
-    })).reverse(); // 按时间正序
+    })).reverse();
+
+    // 新增：聚合所有相关表数据
+    const [allAssetHistory] = await db.execute('SELECT * FROM asset_history ORDER BY date DESC LIMIT 180');
+    const [allPerformanceHistory] = await db.execute('SELECT * FROM performance_history ORDER BY date DESC LIMIT 180');
+    const [allRecommend] = await db.execute('SELECT * FROM Recommend');
+    const [allAssetActivity] = await db.execute('SELECT * FROM asset_activity_history ORDER BY operation_date DESC LIMIT 100');
+    const [allMarket] = await db.execute('SELECT * FROM Market ORDER BY updated_at DESC LIMIT 100');
+    const [allBond] = await db.execute('SELECT * FROM bond');
 
     return {
       portfolio: portfolioData[0] || {},
@@ -603,7 +621,7 @@ async function getFinancialDataForLLM() {
         changePercent: stock.change_percent,
         lastUpdated: stock.updated_at
       })),
-      tradingRecommendations: tradingRecommendations.slice(0, 10), // 提供前10个推荐
+      tradingRecommendations: tradingRecommendations.slice(0, 10),
       portfolioTrend: portfolioTrend,
       marketSummary: {
         totalFeaturedStocks: featuredStocks.length,
@@ -611,7 +629,14 @@ async function getFinancialDataForLLM() {
         avgRecommendationScore: tradingRecommendations.length > 0
           ? (tradingRecommendations.reduce((sum, r) => sum + r.score, 0) / tradingRecommendations.length).toFixed(2)
           : 0
-      }
+      },
+      // 新增：所有表的原始数据，供AI深度分析
+      allAssetHistory,
+      allPerformanceHistory,
+      allRecommend,
+      allAssetActivity,
+      allMarket,
+      allBond
     };
   } catch (error) {
     console.error('Error getting financial data for LLM:', error);
@@ -1766,6 +1791,12 @@ app.post('/api/chat', async (req, res) => {
     if (!financialData) {
       console.log('❌ [API] 财务数据获取失败');
       return res.status(500).json({ error: '无法获取财务数据' });
+    }
+
+    // Debug: 输出 tradingRecommendations 和 Recommend 原始数据
+    console.log('🟦 [DEBUG] tradingRecommendations:', financialData.tradingRecommendations);
+    if (financialData.allRecommend) {
+      console.log('🟦 [DEBUG] allRecommend:', financialData.allRecommend);
     }
 
     console.log('✅ [API] 财务数据获取成功');
