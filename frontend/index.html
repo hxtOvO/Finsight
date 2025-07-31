@@ -1359,13 +1359,15 @@
                     <!-- 左下: Selected Asset Chart -->
                     <div style="grid-column:1/2; grid-row:2/3; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; display:flex; flex-direction:column; width:76%; height:100%; overflow:hidden;">
                       <!-- 动态标题 -->
-                      <div style="margin-bottom:16px;">
-                        <h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Category Performance</h3>
-                      </div>
-                      <div style="width:100%; flex:1; position:relative;">
-                        <canvas id="selectedAssetChart" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
-                      </div>
-                    </div>
+  <div style="margin-bottom:16px;">
+    <!-- 原始标题：<h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Performance</h3> -->
+    <!-- 修改后的标题，初始显示为 "Cash Value (1m)"，字体大小与 Portfolio Performance 保持一致 -->
+    <h3 id="selectedAssetTitle" style="margin:0; font-size:1.5rem; font-weight:700; color:#1a233a; letter-spacing:-0.5px;">Cash Value (1m)</h3>
+  </div>
+  <div style="width:100%; flex:1; position:relative;">
+    <canvas id="selectedAssetChart" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+  </div>
+</div>
                     
                     <!-- 右下: Featured Stocks -->
                     <div class="featured-stocks-panel" style="grid-column:2/3; grid-row:2/3; height:100%; min-height:320px; width:94.5%; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,0.08); padding:20px; overflow:hidden; margin-left:-15%;">
@@ -1606,7 +1608,11 @@
                   if (window.selectedAssetChart && typeof window.selectedAssetChart.resize === 'function') {
                     window.selectedAssetChart.resize();
                   }
-                }, 200);
+                // *** 修改部分：确保在所有图表初始化和resize完成后，再默认加载 Cash Value (1m) 的折线图 ***
+            // 这样可以避免被其他默认行为覆盖
+            updateSelectedAssetChart('Cash', '1m');
+
+          }, 200); // 稍微延迟，确保图表canvas已渲染且已调整大小
 
                 // 重新初始化隐私切换功能
                 const privacyToggle = document.getElementById('privacyToggle');
@@ -1744,17 +1750,59 @@
     // 假设 fetchSelectedAssetPerformanceData 函数已经定义在全局作用域或可访问的模块中
     // async function fetchSelectedAssetPerformanceData(assetType, range) { ... }
 
+// 辅助函数：将字符串首字母大写
+function capitalizeFirstLetter(string) {
+  if (!string) return '';
+  return string.charAt(0).toUpperCase() + string.slice(1);
+}
+
+// 辅助函数：格式化时间范围字符串 (例如: '1m' -> '1M', '7d' -> '7D')
+function formatRangeString(range) {
+  if (!range) return '';
+  // 匹配数字和字母部分
+  const match = range.match(/^(\d+)([a-zA-Z]+)$/);
+  if (match && match.length === 3) {
+    const number = match[1];
+    const unit = match[2].toUpperCase(); // 将单位转换为大写
+    return `${number}${unit}`;
+  }
+  return range; // 如果不匹配，返回原始字符串
+}
+
+
     // 更新左下角折线图
     async function updateSelectedAssetChart(assetType, range) { // 添加 async 关键字
       const ctx = document.getElementById('selectedAssetChart').getContext('2d');
 
+      const selectedAssetTitle = document.getElementById('selectedAssetTitle');
+
+  // 格式化 range 字符串以用于显示
+  const displayRange = formatRangeString(range);
+
+  // 在设置标题时，将 assetType 首字母大写，并使用格式化后的 range
+  if (selectedAssetTitle) {
+    selectedAssetTitle.textContent = `${capitalizeFirstLetter(assetType)} Value (${displayRange})`;
+  }
+
+  console.log(`Attempting to update chart for: ${assetType}, range: ${range}`);
+
       // *** 关键修改：调用 fetchSelectedAssetPerformanceData 从后端获取数据 ***
       let data = [];
       try {
-        data = await fetchSelectedAssetPerformanceData(assetType, range);
+        const requestAssetType = assetType.toLowerCase(); // 保持这里为小写，以匹配后端
+    data = await fetchSelectedAssetPerformanceData(requestAssetType, range);
+    console.log('Data received from API:', data);
       } catch (error) {
         console.error("Failed to load historical data from API, showing empty chart.", error);
         // 可以在这里添加用户友好的提示，例如在图表区域显示“数据加载失败”
+        if (ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available for this period.', ctx.canvas.width / 2, ctx.canvas.height / 2);
+    }
+
         if (selectedAssetChartInstance) {
           selectedAssetChartInstance.destroy(); // 销毁旧图表实例
           selectedAssetChartInstance = null; // 清空实例
@@ -1766,6 +1814,13 @@
       // 检查返回的数据是否为空或无效
       if (!data || data.length === 0) {
         console.warn(`No historical data found for ${assetType} in ${range}.`);
+        if (ctx) {
+        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+        ctx.font = '16px Arial';
+        ctx.fillStyle = '#888';
+        ctx.textAlign = 'center';
+        ctx.fillText('No data available for this period.', ctx.canvas.width / 2, ctx.canvas.height / 2);
+    }
         if (selectedAssetChartInstance) {
           selectedAssetChartInstance.destroy(); // 销毁旧图表实例
           selectedAssetChartInstance = null; // 清空实例
@@ -1788,14 +1843,14 @@
         data: {
           labels: dates,
           datasets: [{
-            label: `${assetType} Value (${range})`,
+            label: `${capitalizeFirstLetter(assetType)} Value (${displayRange})`, // 图例标签也使用格式化后的 range
             data: values,
             borderColor: '#db0011',
             backgroundColor: 'rgba(219, 0, 17, 0.1)',
             fill: true,
             tension: 0.4,
             pointRadius: 0,
-            pointHoverRadius: 5,
+            pointHoverRadius: 0,
             pointBackgroundColor: '#db0011',
             pointBorderColor: '#fff',
             pointBorderWidth: 2,
@@ -1806,7 +1861,7 @@
           maintainAspectRatio: false,
           plugins: {
             legend: {
-              display: true,
+              display: false, // 保持图例隐藏
               position: 'top',
               labels: {
                 font: {
