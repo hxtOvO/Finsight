@@ -269,3 +269,67 @@ npm start
 
 **文档责任人**：Finsight开发组  
 **联系方式**：通过GitHub仓库Issue反馈问题
+
+
++---------------------+       1:1        +---------------------+
+|   current_assets    |<---------------->|        bond         |
+|---------------------|                  |---------------------|
+| id (PK)             |                  | asset_id (PK, FK)   |
+| type                |                  | period              |
+| symbol              |                  | coupon_rate         |
+| amount              |                  | amount              |
++---------------------+                  +---------------------+
+        ^
+        |
+        | N:1（logical connection：asset_type ↔ type）
+        |
++-----------------------+
+|asset_activity_history |
+|-----------------------|
+| id (PK)               |
+| operation_date        |
+| operation_type        |
+| amount                |
+| description           |
+| asset_type            |
++-----------------------+
+
+
++---------------------+       1:N        +---------------------+
+|    asset_history    |<---------------->| performance_history |
+|---------------------|                  |---------------------|
+| date (PK)           |                  | id (PK)             |
+| cash_value          |                  | date (FK)           |
+| stock_value         |                  | value               |
+| bond_value          |                  | range_type          |
+| other_value         |                  | created_at          |
++---------------------+                  +---------------------+
+        ^
+        |
+        | Logical linkage (total value calculation)
+        |
++---------------------+
+|     portfolio       |
+|---------------------|
+| id (PK)             |
+| total_value         |
+| gain_loss           |
+| gain_loss_percent   |
+| updated_at          |
++---------------------+
+
+
++---------------------+       N:1        +---------------------+       1:1        +---------------------+
+|       market        |<---------------->|  featured_stocks    |<---------------->|     recommend       |
+|---------------------|                  |---------------------|                  |---------------------|
+| id (PK)             |                  | id (PK)             |                  | id (PK)             |
+| list_type           |                  | symbol (FK)         |                  | symbol (FK)         |
+| symbol (UNIQUE w/   |                  | price               |                  | period              |
+|  list_type)         |                  | change_percent      |                  | strong_buy ~ etc.   |
+| name                |                  | updated_at          |                  | updated_at          |
+| price ~ market_cap  |                  +---------------------+                  +---------------------+
+| updated_at          |                            ^
++---------------------+                            |
+        ^                                          | N:1（via symbol）
+        |                                          |
+        +------------------------------------------+
